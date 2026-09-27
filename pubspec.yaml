@@ -1,0 +1,41 @@
+name: adaptive_physical_communication
+description: Phone-to-phone adaptive physical communication system (Flutter mobile + web)
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  camera: ^0.11.0+2
+  permission_handler: ^11.3.1
+  record: ^6.2.1
+  audioplayers: ^6.1.0
+  path_provider: ^2.1.4
+  wakelock_plus: ^1.2.8
+  file_picker: ^8.1.6
+  collection: ^1.18.0
+  image: ^4.5.4
+  vibration: ^2.0.0
+  sensors_plus: ^6.1.1
+  web: ^1.1.1
+  qr: ^3.0.2
+  zxing2: ^0.2.4
+  url_launcher: ^6.3.1
+  video_player: ^2.9.2
+  gal: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+    - assets/samples/images/
+    - assets/samples/videos/

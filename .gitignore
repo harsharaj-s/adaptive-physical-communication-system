@@ -1,0 +1,28 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python (asset generators in tool/)
+__pycache__/
+*.pyc
+
+# Signing secrets
+android/key.properties
+*.jks
+*.keystore
+
+# Env / logs
+.env
+*.log
+project_report_extract.txt
