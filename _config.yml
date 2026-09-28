@@ -17,12 +17,6 @@ author:
   name: Harsharaj S
   url: https://github.com/harsharaj-s
 
-social:
-  name: Harsharaj S
-  links:
-    - https://github.com/harsharaj-s
-    - https://www.linkedin.com/in/harsharajs
-
 plugins:
   - jekyll-seo-tag
   - jekyll-sitemap
