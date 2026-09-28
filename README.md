@@ -65,7 +65,7 @@ This README is the complete technical manual. It explains what every part does, 
 23. [Glossary](#23-glossary)
 24. [References](#24-references)
 
-Also: [Contributing](#contributing) · [Security](#security) · [Citing this project](#citing-this-project) · [Acknowledgements](#acknowledgements) · [License](#license)
+Also: [Contributing](#contributing) · [Security](#security) · [Citing this project](#citing-this-project) · [Acknowledgements](#acknowledgements) · [Author](#author) · [License](#license)
 
 ---
 
@@ -1368,6 +1368,10 @@ If you use APCS in academic work, please cite it using the metadata in [CITATION
 ## Acknowledgements
 
 APCS builds on open-source Flutter packages, notably [`qr`](https://pub.dev/packages/qr) and [`zxing2`](https://pub.dev/packages/zxing2) for QR codes, [`camera`](https://pub.dev/packages/camera), [`record`](https://pub.dev/packages/record) and [`audioplayers`](https://pub.dev/packages/audioplayers) for the hardware, and [`sensors_plus`](https://pub.dev/packages/sensors_plus) and [`vibration`](https://pub.dev/packages/vibration) for the Vibration channel. The full list is in [section 17](#dependencies), and the exact versions are pinned in `pubspec.yaml` and `pubspec.lock`.
+
+## Author
+
+**Harsharaj S**: [GitHub](https://github.com/harsharaj-s) · [LinkedIn](https://www.linkedin.com/in/harsharajs)
 
 ## License
 
