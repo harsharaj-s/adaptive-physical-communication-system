@@ -1,6 +1,6 @@
 # Known Issues
 
-This page lists the limits of the current build and the problems found while writing these documents by reading the code and running it. Each entry gives the symptom, the cause with a file reference, the impact, and a workaround or fix. Nothing here blocks the main demo: Light and Sound fountain transfers of text, photos and short videos work as documented.
+This page lists the limits of the current build and the problems found while writing these documents by reading the code and running it. Each entry gives the symptom, the cause with a file reference, the impact, and a workaround or fix. Nothing here blocks the main demo: Light and Sound fountain transfers of text, photos and short videos work as documented. The Vibration channel is the exception: it is experimental and doesn't work reliably yet ([§2.8](#28-vibration-transfers-are-unreliable-on-real-phones-high)).
 
 Back to the [documentation index](../README.md).
 
@@ -78,6 +78,19 @@ A Silent frame always carries a 24-byte block, so a three-letter message takes o
   - Its 23 ms window can straddle two symbols.
 - **Impact.** Display only. Decoding doesn't use either readout, and the frequencies themselves are exact on the sender and accurate to a few hertz on the receiver.
 - **Workaround.** Compare the kHz values, not their exact timing. For a clean side-by-side demo, use Silent, where one tone plays at a time.
+
+### 2.8 Vibration transfers are unreliable on real phones (High)
+
+- **Symptom.** A vibration send between two phones usually fails, stalls, or never shows the message on the receiver, even for a two-letter text.
+- **Status.** Experimental. The bit codec passes its unit tests (`physical_codecs_test.dart`), but real phone-to-phone transfers haven't been made to work reliably. The `vibration-coupled` Simulation Lab scenario doesn't prove otherwise, because it ends up sending over the simulated optical channel ([§3.3](#33-other-simulation-lab-quirks-low), first row).
+- **Likely causes** (not yet confirmed on devices):
+  - Motor spin-up and spin-down times differ between phones, so the 80 ms and 180 ms pulses can arrive stretched or shortened past the 130 ms decision boundary.
+  - The accelerometer sampling rate and noise vary by phone, and small movements shift the gravity baseline.
+  - A single packet takes over a minute on air, far longer than the 20 s acknowledgement timeout ([§2.3](#23-vibration-airtime-exceeds-the-acknowledgement-timeout-medium)), so the sender retransmits over its own first copy.
+  - The protocol path's ACK handling can lose track of gaps ([§3.1](#31-acks-are-treated-as-cumulative-high-for-the-protocol-path)).
+  - iOS offers limited motor control, so it falls back to haptic ticks.
+- **Workaround.** Use Light or Sound. Don't use Vibration in demonstrations.
+- **Fix.** Calibrate pulse timing per phone, fix §2.3 and §3.1, then measure on several real device pairs.
 
 ---
 
@@ -159,7 +172,7 @@ These aren't bugs; they follow from the physics. See [Performance](../operations
 | Light speed | ≈1.3–2.5 KB/s | Camera decode rate × bytes per sparse QR |
 | Sound speed | 10.8–35.8 B/s audible; 3.4–5.0 B/s Silent | Symbol length needed to beat echo; Silent can play only one tone at a time without an audible difference tone |
 | Sound range | ≈0.3–2 m audible; ≈0.1–0.5 m Silent | Speaker power and room noise; phones are weak at 19 kHz |
-| Vibration speed | ≈0.5 B/s | Motor spin-up/down time (tens of ms per pulse) |
+| Vibration speed | ≈0.5 B/s (nominal; real transfers are unreliable, see §2.8) | Motor spin-up/down time (tens of ms per pulse) |
 | Vibration range | Phones touching | The accelerometer must feel the other phone's motor |
 | Security | None | See [Security](../operations/SECURITY.md) |
 
@@ -175,6 +188,7 @@ These aren't bugs; they follow from the physics. See [Performance](../operations
 | 2.5 | Silent depends on each phone's 19 kHz response | Medium (by design) | Hardware |
 | 2.6 | Silent "sos" takes one 4.8 s frame | Low (by design) | Sound profiles |
 | 2.7 | Live kHz readout slightly ahead of the audio; close chord tones merge | Low | Sound UI |
+| 2.8 | Vibration transfers unreliable on real phones (experimental) | High | Vibration channel |
 | 3.1 | Cumulative ACK handling | High (protocol path) | Transport |
 | 3.2 | Switching scenarios fail | Medium | Simulation |
 | 3.3 | Simulation Lab quirks | Low | Simulation / UI |

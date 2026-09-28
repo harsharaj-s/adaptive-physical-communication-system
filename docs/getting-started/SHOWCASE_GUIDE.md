@@ -88,13 +88,13 @@ Turn on Airplane mode on both phones and show it.
 5. Hold the two screens side by side. The sender's **Sending now** and the receiver's **Hearing now** show the same kHz, live.
 6. **Silent encore (optional, 20 s):** resend **Meet at gate 3** on **Silent**. The room hears nothing, yet both readouts show about 18.5–19.9 kHz. That's the proof the data is really going through the air.
 
-### Step 5 (optional): Vibration (60 s+)
+### Vibration: leave it out
 
-Only if time allows. Press the phones together firmly and send a single short word. It is slow by design (about 0.5 bytes per second), so it works as a physics demonstration rather than a data link.
+Don't demo Vibration. The channel is experimental and real phone-to-phone transfers usually fail ([Known Issues §2.8](../project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high)). If someone asks, explain the idea (short and long buzzes felt by the accelerometer) and say it's work in progress.
 
-### Step 6 (optional): Simulation Lab (60 s)
+### Step 5 (optional): Simulation Lab (60 s)
 
-Home → ⋮ → Developer tools → **Simulation Lab** → scenario *optical-degrades* → run. It shows the adaptive engine detecting the collapsing light channel and switching to sound mid-transfer.
+Home → ⋮ → Developer tools → **Simulation Lab** → scenario *optical-degrades* → run. Watch the log: the adaptive engine sees the light channel collapse, scores it about 0.27 against about 0.70 for sound, and switches to sound. Present this as the **decision logic** only. The run itself currently ends **FAILED**, because a transport bug stalls the transfer before the switch ([Known Issues §3.2](../project/KNOWN_ISSUES.md#32-simulation-scenarios-that-should-switch-channels-fail-medium)). For a run that ends in SUCCESS, pick *optical-always-good*.
 
 ---
 
@@ -136,7 +136,7 @@ Home → ⋮ → Developer tools → **Simulation Lab** → scenario *optical-de
 | Counter stops at "x / K" | Keep holding. If the sender stopped, tap **Resume streaming** | "Nothing is lost. The receiver keeps every piece it has." |
 | Sound: "too damaged" rising | Volume up, speaker towards the mic, move closer, or resend on **Rugged** | "The room is loud, so I'll use the robust profile." |
 | Sound: nothing at all | Tap **Enable microphone**; check that the tone meter moves while the sender plays | |
-| Silent: the *Silent band 18–20 kHz* meter stays flat | Media volume to max on the sender; swap the phones' roles; otherwise switch the sender to **Audible** | "Not every phone speaker reaches 19 kHz. The audible band always works." |
+| Silent: the *Silent band 18–20 kHz* meter stays flat | Media volume to max on the sender; swap the phones' roles; otherwise switch the sender to **Audible** | "Not every phone speaker reaches 19 kHz. The audible band is much more dependable." |
 | Video won't play on an iPhone | Use an **MP4** sample (iOS doesn't play WebM) | |
 | Something is truly broken | Switch to the Simulation Lab and explain the design there | "Here's the same pipeline under a simulated channel." |
 
@@ -167,7 +167,7 @@ Derivations: [Calculations](../algorithms/CALCULATIONS.md). Photos are re-compre
 | Question | Short answer |
 |---|---|
 | Is it encrypted? | Not yet. Anyone who can see the screen or hear the sound could decode it. See [Security](../operations/SECURITY.md). |
-| How far does it work? | Light: 15–25 cm. Sound: across a table, up to a couple of metres in a quiet room. Vibration: touching. |
+| How far does it work? | Light: 15–25 cm. Sound: across a table, up to a couple of metres in a quiet room. Vibration needs the phones touching, but it's experimental and not reliable yet. |
 | Why not just use Bluetooth? | The point is communication with no radio at all: air-gapped, radio-silent or emergency situations, and one-to-many broadcast with no pairing. |
 | How fast is it? | Light: about 1.3–2.5 KB/s in practice. Sound: 11–36 bytes per second audible, 3.4–5 bytes per second silent. |
 | Why can't I hear the Silent mode? | It plays one tone at a time at 18.3–19.9 kHz, above most adults' hearing and above nearly all room noise. Same error correction and fountain code as the audible band. See [Sound Channel §14](../channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic). |
@@ -176,4 +176,4 @@ Derivations: [Calculations](../algorithms/CALCULATIONS.md). Photos are re-compre
 | Can we see the frequencies? | Yes: **Sending now** on the sender and **Hearing now** on the receiver, in kHz, with a spectrum strip. |
 | What if frames are lost? | The fountain code makes lost frames irrelevant. Only the number of good frames matters. |
 | Can many phones receive? | Yes, for Light and Sound. Every receiver finishes independently. |
-| What is the adaptive part? | The engine scores channels on throughput, reliability, latency, confidence and stability, and switches with hysteresis. See [Adaptive Engine](../algorithms/ADAPTIVE_ENGINE.md). |
+| What is the adaptive part? | The engine scores channels on throughput, reliability, latency, confidence and stability, and switches with hysteresis. Today it runs in the Simulation Lab and developer tools; in Send/Receive you pick the channel yourself. See [Adaptive Engine](../algorithms/ADAPTIVE_ENGINE.md). |

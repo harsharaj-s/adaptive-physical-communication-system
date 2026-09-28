@@ -2,7 +2,7 @@
 
 # Adaptive Physical Communication System — Documentation
 
-This folder is the complete documentation set for the **Adaptive Physical Communication System (APCS)**. APCS is a Flutter app that moves text, links, photos and short videos from one phone to another using only **light** (animated QR codes), **sound** (multi-tone chords) or **vibration** (motor pulses). No Internet, Wi-Fi, Bluetooth, NFC or mobile data is involved.
+This folder is the complete documentation set for the **Adaptive Physical Communication System (APCS)**. APCS is a Flutter app that moves text, links, photos and short videos from one phone to another using only **light** (animated QR codes) or **sound** (multi-tone chords). A third channel, **vibration** (motor pulses), is experimental and doesn't work reliably on real phones yet. No Internet, Wi-Fi, Bluetooth, NFC or mobile data is involved.
 
 The root [`README.md`](../README.md) is a one-file technical manual. The documents here split that material by topic and go deeper. They add byte-level examples generated from the real code, step-by-step derivations, design rationale, developer references and operational guides.
 
@@ -68,7 +68,7 @@ The documents follow the [Diátaxis](https://diataxis.fr/) framework: each one i
 | [Design Decisions](architecture/DESIGN_DECISIONS.md) | Why was each major choice made, and what else was considered? |
 | [Light Channel](channels/LIGHT_CHANNEL.md) | How does the animated fountain QR link work? |
 | [Sound Channel](channels/SOUND_CHANNEL.md) | How do MT-FSK, Reed-Solomon and fountain coding work over audio? |
-| [Vibration Channel](channels/VIBRATION_CHANNEL.md) | How does pulse-width keying work between motor and accelerometer? |
+| [Vibration Channel](channels/VIBRATION_CHANNEL.md) | How is pulse-width keying between motor and accelerometer designed? (Experimental, not reliable yet.) |
 | [Legacy Modems](channels/LEGACY_MODEMS.md) | What came before, and why was it replaced? |
 | [Fountain Code](algorithms/FOUNTAIN_CODE.md) | How does the LT code let the receiver finish with any K frames? |
 | [Reed-Solomon](algorithms/REED_SOLOMON.md) | How are corrupted bytes repaired? |
@@ -97,7 +97,7 @@ docs/
 ├── channels/
 │   ├── LIGHT_CHANNEL.md               Fountain QR: framing, density, camera, HUD
 │   ├── SOUND_CHANNEL.md               MT-FSK + Reed-Solomon + fountain over audio
-│   ├── VIBRATION_CHANNEL.md           Pulse-width keying with motor and accelerometer
+│   ├── VIBRATION_CHANNEL.md           Pulse-width keying with motor and accelerometer (experimental)
 │   └── LEGACY_MODEMS.md               CSK light, APCS1 text QR, two-tone FSK
 ├── algorithms/
 │   ├── FOUNTAIN_CODE.md               LT code: encoding, proofs, GF(2) decoder, worked example
@@ -177,7 +177,7 @@ Most of these values are exact, because they're set in the code: frame sizes, fr
 | Reed-Solomon repair | up to 12 errors or 24 erasures per 99-byte frame | [Reed-Solomon](algorithms/REED_SOLOMON.md) |
 | Fountain overhead | mean 0–2.2 extra symbols (measured in tests) | [Fountain Code](algorithms/FOUNTAIN_CODE.md#7-measured-overhead) |
 | Adaptive score | 0.35T + 0.25R + 0.15L + 0.15C + 0.10S | [Adaptive Engine](algorithms/ADAPTIVE_ENGINE.md) |
-| Vibration (nominal) | ≈0.5 B/s | [Vibration Channel](channels/VIBRATION_CHANNEL.md) |
+| Vibration (nominal; experimental, unreliable) | ≈0.5 B/s | [Vibration Channel](channels/VIBRATION_CHANNEL.md) |
 
 ---
 

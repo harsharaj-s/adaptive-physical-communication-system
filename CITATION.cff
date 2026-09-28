@@ -7,7 +7,8 @@ abstract: >-
   and short videos from one phone to another using only light (animated
   fountain-coded QR codes), sound (16-ary multi-tone FSK with Reed-Solomon
   error correction and LT fountain coding, including a near-ultrasonic
-  18-20 kHz band) or vibration, with no radio of any kind in the data path.
+  18-20 kHz band), with no radio of any kind in the data path. An
+  experimental vibration channel is included but doesn't work reliably yet.
 authors:
   - family-names: "S"
     given-names: "Harsharaj"

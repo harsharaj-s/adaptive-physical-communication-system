@@ -21,13 +21,13 @@ Back to the [documentation index](../README.md).
 ## General
 
 **What does the app do?**
-It sends text, links, photos, videos and small files from one phone to another using only light (a QR-code animation on the screen, read by the other phone's camera), sound (tones from the speaker, heard by the microphone) or vibration (motor pulses felt by the accelerometer).
+It sends text, links, photos, videos and small files from one phone to another using only light (a QR-code animation on the screen, read by the other phone's camera), sound (tones from the speaker, heard by the microphone). A third channel, vibration (motor pulses felt by the accelerometer), is experimental and doesn't work reliably yet.
 
 **Does it use the Internet, Wi-Fi, Bluetooth or NFC?**
 No. The Android release manifest doesn't even request the `INTERNET` permission. The code keeps an explicit list of excluded transports, and a test (`test/physical_only_test.dart`) checks that exactly three physical channels exist. See [Permissions and Privacy](../operations/PERMISSIONS_AND_PRIVACY.md).
 
 **Which platforms are supported?**
-Android and iOS support all three channels. Chrome (web) supports Light (receive via webcam) and Sound. Vibration needs a phone.
+Android and iOS support Light and Sound, and offer Vibration as an experimental option. Chrome (web) supports Light (receive via webcam) and Sound. Vibration needs a phone.
 
 **Do both phones need the app?**
 Yes, and the **same build**. The Light frame format has a version byte, and other versions are rejected on purpose.
@@ -49,7 +49,7 @@ Each code carries one *symbol* of a fountain code: 160–600 bytes plus a 26-byt
 Because of the fountain code: any K codes (plus one or two) rebuild a file of K pieces. See [Fountain Code](../algorithms/FOUNTAIN_CODE.md).
 
 **Why are the QR codes so small compared with the maximum a QR can hold?**
-A QR version 40 holds about 2.9 KB, but a hand-held phone camera can't resolve its modules. The simulations showed about 100% reads at version 8, 81% at version 12 and 13% at version 20, so small codes finish much faster overall.
+A QR version 40 holds about 2.9 KB, but a hand-held phone camera can't resolve its modules. The camera simulator read about 100% of frames at version 8, 81% at version 12 and 13% at version 20, so small codes finish much faster overall.
 
 **What does "Auto" density do?**
 It picks 160, 240 or 330 bytes per frame, choosing the sparsest code that keeps the transfer to 48 symbols or fewer. Envelopes up to 7 680 B use 160; up to 11 520 B use 240; anything larger uses 330.
@@ -120,11 +120,14 @@ Messages over 8 KiB fall back to the older packet protocol, which the fountain r
 
 ## Vibration channel
 
+**Does vibration work?**
+Not reliably yet. It is experimental: on real phones, vibration transfers usually fail or never finish, even for a two-letter message. Use Light or Sound. [Known Issues §2.8](../project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high) lists the likely causes.
+
 **How does vibration carry data?**
 A short buzz (80 ms) is a 0, a long buzz (180 ms) is a 1. The receiver measures each buzz with its accelerometer. See [Vibration Channel](../channels/VIBRATION_CHANNEL.md).
 
 **Why is it so slow?**
-Motors spin up and down slowly and accelerometers sample at tens to a couple of hundred hertz, so each bit takes about a quarter of a second. It is a demonstration of physical coupling, suitable for a word or two.
+Motors spin up and down slowly and accelerometers sample at tens to a couple of hundred hertz, so each bit takes about a quarter of a second. Even once it works reliably, it will only suit a word or two.
 
 ---
 

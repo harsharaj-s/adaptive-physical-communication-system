@@ -19,11 +19,11 @@
   <a href="docs/project/CHANGELOG.md">Changelog</a>
 </p>
 
-Send text, links, photos and short videos **from one phone to another using only light, sound or vibration**, with no Internet, Wi-Fi, Bluetooth, NFC, mobile data or cloud anywhere in the data path.
+Send text, links, photos and short videos **from one phone to another using only light or sound**, with no Internet, Wi-Fi, Bluetooth, NFC, mobile data or cloud anywhere in the data path. A third channel, **vibration**, is experimental and doesn't work reliably yet.
 
 - **Light**: the sender's screen plays an animated stream of QR codes; the receiver's camera reads them. One screen can feed any number of cameras at once.
 - **Sound**: the sender's speaker plays multi-tone chords; the receiver's microphone decodes them. Works across a table, and one-to-many as well. A **Silent** band sends the same frames at 18–20 kHz, which most adults can't hear.
-- **Vibration**: the sender's vibration motor pulses; the receiver's accelerometer feels them. Contact only, one-to-one.
+- **Vibration (experimental)**: the sender's vibration motor pulses; the receiver's accelerometer feels them. Contact only, one-to-one. **On real phones, transfers often fail or never finish**, so treat it as a work in progress, not a working feature (see [section 11](#11-vibration-channel)).
 
 It is a Flutter app (Dart) for **Android, iOS and Chrome (web)**. Behind the simple Send/Receive screens sit a rateless **fountain code**, a camera-tuned **QR pipeline**, a **multi-tone FSK modem with Reed-Solomon error correction**, a **reliable packet transport**, and an **adaptive channel-selection engine** that runs in the Simulation Lab and developer tools. In the everyday Send/Receive screens you choose the channel yourself; the app doesn't switch channels automatically there.
 
@@ -73,6 +73,7 @@ Also: [Contributing](#contributing) · [Security](#security) · [Citing this pro
 
 | | Light (fountain QR) | Sound (MT-FSK fountain) | Vibration |
 |---|---|---|---|
+| Status | Working | Working | **Experimental: unreliable on real phones** |
 | Transmitter | Screen, full brightness | Speaker | Vibration motor |
 | Receiver | Camera, 1.5× zoom | Microphone, 44.1 kHz | Accelerometer |
 | Topology | One-to-many broadcast | One-to-many broadcast | One-to-one, phones touching |
@@ -80,7 +81,7 @@ Also: [Contributing](#contributing) · [Security](#security) · [Citing this pro
 | Payload rate | ≈1.3–2.5 KB/s (estimated from the camera simulator) | Nominal: 11 / 18 / 27 / 36 B/s (Rugged / Safe / Standard / Fast); inaudible 3.4 / 5.0 B/s (Silent Robust / Silent) | ≈0.5 B/s (nominal) |
 | Max message | 8 MiB (practical: < 200 KB) | 8 KiB direct (practical: ≤ 2 KB) | Short text |
 | Error handling | Rateless LT fountain + CRC-32 per frame | Reed-Solomon per frame (errors + erasures) + CRC-16 + LT fountain | CRC-32 packets + ACK/retransmit |
-| Best for | Photos, video, files | Short text, tiny images | A few characters |
+| Best for | Photos, video, files | Short text, tiny images | Not recommended yet |
 
 > **About these numbers.** They come from the app's own formulas and from headless simulations of a phone camera and a room, not from a study across many phones.
 > - **Nominal** rates are calculated from each profile's timing, before any lost or repaired frames.
@@ -129,8 +130,9 @@ Core ideas in one line each:
 - Live meters for mic input, tone signal, the 18–20 kHz band, blocks recovered and frames too damaged.
 - **Live frequency readout:** the sender shows **Sending now** (the exact tones on air, in kHz) and the receiver shows **Hearing now** (the strongest frequencies its microphone picks up), each with a 0–22 kHz spectrum strip. When sound is getting through, both phones show the same kHz.
 
-### Vibration channel
+### Vibration channel (experimental)
 - Pulse-width keying: short pulse = 0, long pulse = 1, detected by the accelerometer against an adaptive gravity baseline.
+- **Not reliable yet.** The encoder and decoder pass their unit tests, but real phone-to-phone transfers usually fail or stall. Use Light or Sound for anything that matters.
 
 ### Engineering features
 - **Simulation Lab**: 9 scenarios with two virtual phones, live metrics, channel scoring and mid-transfer channel switching.
@@ -180,7 +182,7 @@ Install the **same build on both phones**. The Light frame format is versioned (
 4. Adjust the channel options:
    - **Light**: "QR density" (Auto recommended). The line under the preview shows size, bytes per frame and estimated time.
    - **Sound**: a "Sound band" switch (Audible / Silent), speed chips for that band (each showing bytes per second), the *Frame to be sent* card and an estimate.
-   - **Vibrate**: phones must touch.
+   - **Vibrate** (experimental): phones must touch. Transfers often fail; use Light or Sound instead.
 5. Tap **Show QR & send**, **Play & send** or **Start vibration**.
 6. Light and Sound stream until you stop them. Tap **Stop** once the receiver shows DONE, or **Resume streaming** if it hasn't finished.
 
@@ -188,7 +190,7 @@ Install the **same build on both phones**. The Light frame format is versioned (
 1. **Home → Receive**, then pick the same channel as the sender.
 2. **Light**: hold the phone 15–25 cm from the sender's screen with the whole QR inside the corner brackets. Tap the preview to refocus and use **2×** if the QR looks small. The HUD goes SCAN → LOCK → DONE.
 3. **Sound**: allow the microphone. **Hearing now** shows the frequency the microphone picks up. The card shows "Receiving over sound · \<profile\>", blocks recovered and damaged frames.
-4. **Vibrate**: press the phones together firmly.
+4. **Vibrate** (experimental): press the phones together firmly. Don't expect the message to arrive every time.
 5. The message appears in a card. Photos and videos are saved to the Gallery (album *Adaptive Comm*). **Clear & keep listening** gets ready for the next message.
 
 ---
@@ -884,6 +886,8 @@ Verified in the tests:
 
 ## 11. Vibration channel
 
+> **Status: experimental.** This section describes how the channel is designed. The bit codec passes its unit tests, but on real phones vibration transfers usually fail or never finish. Likely causes are motor timing that differs between phones, accelerometer noise, and packets that take longer on air than the 20 s acknowledgement timeout ([Known Issues §2.8](docs/project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high)). Don't rely on it or demo it as a working feature.
+
 Files: `lib/core/channels/vibration_channel.dart`, `VibrationBitCodec` in `lib/core/physical/physical_codecs.dart`.
 
 **Modulation:** pulse-width keying.
@@ -905,7 +909,7 @@ Files: `lib/core/channels/vibration_channel.dart`, `VibrationBitCodec` in `lib/c
 
 **Motor:** full-intensity pattern where supported, otherwise a plain duration vibrate, and a heavy haptic tick as the last resort.
 
-**Rate:** about 240 ms per bit on average, which is **≈4.2 bit/s ≈ 0.5 B/s**. It is a physical-coupling demo, suitable for a few characters.
+**Rate:** about 240 ms per bit on average, which is **≈4.2 bit/s ≈ 0.5 B/s** (nominal). Even when it works, it is only suitable for a few characters.
 
 ---
 
@@ -1019,7 +1023,7 @@ Degradation and recovery schedules swap the profile after N packets. `VirtualLin
 | `repeated-degradation` | Optical degrades at packet 12 and recovers at 35 | 10 KB |
 | `vibration-coupled` | Only vibration usable | 2 KB |
 
-**Orchestrator flow:** discover → test each channel (20 packets) → pick the best → transfer with reliable transport → re-evaluate every 20 iterations and switch if needed → verify the received bytes match. **Run All Scenarios** reports "N/9 scenarios passed".
+**Orchestrator flow:** discover → test each channel (20 packets) → pick the best → transfer with reliable transport → re-evaluate every 20 iterations and switch if needed → verify the received bytes match. **Run All Scenarios** reports "N/9 scenarios passed". It usually reports 7 of 9: `optical-degrades` and `burst-loss` fail because a transport bug stalls the transfer before the switch ([Known Issues §3.2](docs/project/KNOWN_ISSUES.md#32-simulation-scenarios-that-should-switch-channels-fail-medium)), and `vibration-coupled` passes but actually transfers over the simulated optical channel.
 
 ### 14.3 Performance comparison
 
@@ -1116,8 +1120,8 @@ Home
 
 | Platform | Light | Sound | Vibration |
 |---|---|---|---|
-| Android | ✅ send and receive (brightness control, isolate decoder) | ✅ | ✅ |
-| iOS | ✅ | ✅ | ✅ |
+| Android | ✅ send and receive (brightness control, isolate decoder) | ✅ | ⚠️ Experimental, unreliable |
+| iOS | ✅ | ✅ | ⚠️ Experimental, unreliable (haptic fallback) |
 | Chrome (web) | ✅ webcam receive (canvas sampler, 640×640 centre patch) | ✅ | ❌ |
 
 ### Permissions
@@ -1219,7 +1223,7 @@ Estimates use the app's own formulas: Light with Auto density and simulated capt
 
 ### Vibration
 
-A 9-byte envelope ("hi") becomes a 37-byte packet = 304 bits × ≈0.24 s ≈ **73 s**. Keep it to a word or two.
+A 9-byte envelope ("hi") becomes a 37-byte packet = 304 bits × ≈0.24 s ≈ **73 s** in theory. The channel is experimental and real transfers often don't complete (see [section 11](#11-vibration-channel)).
 
 ---
 
@@ -1238,7 +1242,7 @@ A 9-byte envelope ("hi") becomes a 37-byte packet = 304 bits × ≈0.24 s ≈ **
 - The CSK light modem and the legacy two-tone FSK modem are kept but can't be selected from the current UI.
 - Photos, including demo samples, are re-compressed with the §15.1 pipeline at send time. A tiny, heavily compressed sample can therefore grow somewhat, up to the 120 KB cap.
 - Sound messages over 8 KiB fall back to the packet protocol with the legacy FSK modem, which a fountain-mode receiver doesn't decode. In practice, keep Sound messages under about 2 KB.
-- Vibration packets take longer on air than the 20 s ACK timeout, so vibration is a demonstration channel for a few bytes.
+- **Vibration doesn't work reliably.** On real phones, transfers usually fail or stall. One known cause is that vibration packets take longer on air than the 20 s ACK timeout; motor timing and accelerometer noise also vary between phones. Treat it as experimental.
 - Simulation quirks:
   - Channels marked "undiscoverable" are still tested and can still be chosen.
   - A scenario's override profile replaces *all* fields, not just the ones it names.

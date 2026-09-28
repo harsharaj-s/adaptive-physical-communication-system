@@ -26,6 +26,7 @@ Back to the [documentation index](../README.md).
 | Send text *and* attachment | 4.2 | Small | Two envelopes, or a caption field in APCM |
 | Clamp envelope names to 255 bytes | 4.4 | Trivial | In `ChatPayloadCodec.encode` |
 | Airtime-aware ACK timeout for Vibration | 2.3 | Small | `ackTimeoutMs = max(20 s, 2 × expected airtime)` |
+| Make Vibration work on real phones | 2.8 | Medium | After 2.3 and 3.1: log pulse lengths on real device pairs, calibrate the 130 ms decision boundary per phone, then measure success rates |
 | Release signing and final `applicationId` | Build | Small | See [Build and Release](../operations/BUILD_AND_RELEASE.md) |
 
 ---

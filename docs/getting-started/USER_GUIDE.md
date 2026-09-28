@@ -31,9 +31,11 @@ You need **two phones with the app installed**. One phone is the **sender** and 
 |---|---|---|---|
 | **Light** | The sender's screen shows a fast-changing QR code. The receiver points its camera at it. | 15–25 cm | Photos, videos, longer text |
 | **Sound** | The sender's speaker plays musical-sounding tones, or with **Silent** tones too high for most people to hear. The receiver listens with its microphone. | Across a table (Silent: within arm's reach) | Short text, links |
-| **Vibrate** | The sender's phone buzzes in a pattern. The receiver, pressed against it, feels the buzzes. | Phones touching | A word or two |
+| **Vibrate** (experimental) | The sender's phone buzzes in a pattern. The receiver, pressed against it, feels the buzzes. | Phones touching | Trying it out only: it doesn't work reliably yet |
 
 Nothing leaves the two phones. Anyone nearby could see the QR code or hear the tones, so do not send secrets.
+
+> **Vibrate is experimental.** On real phones, vibration messages often don't arrive, even short ones. Use **Light** or **Sound** for anything you need to get through.
 
 > **Note:** The screenshots in this guide were taken from the web build of the app in a phone-sized browser window. On a phone, the screens look the same, with two differences: the Home screen's bottom line names your phone's channels, and the **Choose transmission mode** panel also offers **Vibrate**.
 
@@ -184,7 +186,7 @@ Tap the one you want. Swipe the panel down to go back to your message without ch
 
 - Photo or video: **Light**.
 - A sentence or a link: **Light** is fastest; **Sound** works when you cannot point a camera.
-- A single word, as a demonstration: **Vibrate**.
+- **Vibrate** is experimental and often fails. Only pick it if you want to try it out.
 
 ---
 
@@ -318,7 +320,7 @@ At the very bottom there is also a **Cancel transmission** button. It stops the 
 
 The screen shows a pulsing vibration icon with **Vibrating…** (or **Transmitting…** between buzzes) and *"Hold phones together — vibration is contact-only (1:1)"*. Keep the phones pressed together until it finishes. **Cancel transmission** at the bottom stops it.
 
-Vibration is very slow: even a two-letter message takes more than a minute.
+Vibration is very slow: even a two-letter message takes more than a minute. It is also experimental, so the message may not arrive at all.
 
 ### 7.3 When sending ends
 
@@ -455,6 +457,8 @@ The status banner at the top shows messages such as **Mic live — listening for
 
 ### 8.3 Receiving over Vibrate
 
+Vibrate is experimental: the message often doesn't arrive, even if you do everything below.
+
 1. Choose **Vibrate** on **both** phones. Open Receive on this phone **before** the sender taps **Start vibration**.
 2. Place the phones **touching**, for example back to back or one on top of the other on a table, and press them together firmly.
 
@@ -527,6 +531,8 @@ If a message you already received appears as soon as you open the Receive screen
 
 ### Vibrate
 
+Vibrate is experimental and doesn't work reliably yet. If you want to try it:
+
 - Start **Receive → Vibrate** on the receiving phone first.
 - Press the phones firmly together on a solid table, and do not touch them while they buzz.
 - Keep it to one short word.
@@ -545,7 +551,7 @@ If a message you already received appears as soon as you open the Receive screen
 | **Sound: "too damaged" keeps rising** | Turn the volume up, point the speaker at the microphone, move closer, or choose **Rugged** on the sender. |
 | **Sound: Silent sends never arrive** | Look at the receiver's **Silent band 18–20 kHz** meter while the sender plays. If it stays near 0%, turn the sender's media volume to maximum and disconnect Bluetooth headphones; then try swapping which phone sends. If it still doesn't move, one phone can't play or hear 18–20 kHz: use **Audible**. If it moves but nothing decodes, move closer, hold still, or choose **Silent Robust**. |
 | **Sound: the two readouts disagree** | Compare the sender's **Sending now** with the receiver's **Hearing now**. If the receiver shows **—**, the sound isn't reaching it: volume up, move closer, uncover the speaker and microphone. If it shows a different steady frequency, something nearby (a fan, a charger, another app) is louder than the sender. The sender's readout may change a split second before the sound; that's normal. |
-| **Vibrate: "Send failed"** | Make sure the other phone is on **Receive → Vibrate** before you start, press the phones together firmly, and tap **Retry**. |
+| **Vibrate: "Send failed"** | Make sure the other phone is on **Receive → Vibrate** before you start, press the phones together firmly, and tap **Retry**. Vibrate is experimental, so if it keeps failing, send over **Light** or **Sound** instead. |
 | **"Payload too large for Light fountain QR"** | The file is too big. Choose a smaller photo or video. |
 | **A photo is not in the Gallery** | Look in the **Adaptive Comm** album. Tap **Retry save** on the card. On Android 9 or older, allow storage access. |
 | **A video will not play on iPhone** | Use an MP4 video. iPhones cannot play or save WebM videos such as **Speed of light**. |

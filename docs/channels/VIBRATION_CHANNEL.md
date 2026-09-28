@@ -1,6 +1,8 @@
 # Vibration Channel
 
-The Vibration channel sends bits by **buzzing** the sender's vibration motor and **feeling** the buzzes with the receiver's accelerometer, while the two phones are pressed together. It is the slowest channel by far. Its value is showing that data can cross even a purely mechanical coupling, with the same packet protocol and CRC protection as the other channels.
+The Vibration channel sends bits by **buzzing** the sender's vibration motor and **feeling** the buzzes with the receiver's accelerometer, while the two phones are pressed together. It is the slowest channel by far. The aim is to show that data can cross even a purely mechanical coupling, with the same packet protocol and CRC protection as the other channels.
+
+> **Status: experimental, not reliable yet.** This page describes the design. The bit codec passes its unit tests, but on real phones vibration transfers usually fail or never finish. The Simulation Lab doesn't prove it works either: its `vibration-coupled` scenario ends up sending over the simulated optical channel ([Simulation Lab quirk 1](../development/SIMULATION_LAB.md#10-known-quirks)). See [Known Issues §2.8](../project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high) for the likely causes. Use Light or Sound for real messages and demonstrations.
 
 Back to the [documentation index](../README.md).
 
@@ -38,7 +40,8 @@ vibration motor ═════ phones pressed together ════ acceleromet
 | Topology | One-to-one (physical contact) |
 | Data path | Protocol path (`ReliableTransport` + `PacketCodec`) |
 | Packet payload (MTU) | 48 bytes |
-| Speed | ≈4.2 bit/s ≈ 0.5 B/s |
+| Status | Experimental: unreliable on real phones |
+| Speed | ≈4.2 bit/s ≈ 0.5 B/s (nominal) |
 | Platforms | Android and iOS (not web) |
 
 ---
@@ -154,7 +157,7 @@ Average bit period, assuming equally likely 0s and 1s: (190 + 290) / 2 = **240 m
 | "hello" | 12 B | 40 B | 328 | ≈79 s |
 | 48-byte payload (a full packet) | — | 76 B | 616 | ≈148 s |
 
-The per-packet overhead (28 bytes, 224 bits, about 54 s) dominates short messages. This is why vibration is a demonstration channel for a word or two.
+These times are calculated, not measured; on real phones most transfers don't complete (see the status note at the top). The per-packet overhead (28 bytes, 224 bits, about 54 s) dominates short messages, so even a working vibration channel would only suit a word or two.
 
 **Known timing conflict.** A full vibration packet takes longer on air (up to about 148 s) than the 20 s hardware ACK timeout, so in unicast mode the sender may retransmit before the first copy finishes. See [Known Issues](../project/KNOWN_ISSUES.md).
 

@@ -76,6 +76,8 @@ Back to the [documentation index](../README.md).
 
 ## 4. Vibration
 
+Vibration is experimental. Even with everything below done right, most real transfers fail ([Known Issues §2.8](../project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high)). If it doesn't work after one or two tries, use Light or Sound.
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Nothing decodes | Phones not touching, soft surface absorbing vibration | Stack the phones back-to-back on a hard table |

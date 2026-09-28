@@ -13,7 +13,7 @@
 
 ## 1. Abstract
 
-This project implements a **phone-to-phone communication system** that transfers messages using only **physical media**: **light (QR codes)**, **sound (FSK tones)**, and **vibration (motor pulses)**. The application is built with **Flutter** and runs on mobile devices and web browsers. Users can compose text, images, links, or files and send them through a selected physical channel. Receivers decode the signal using the camera, microphone, or accelerometer.
+This project implements a **phone-to-phone communication system** that transfers messages using only **physical media**: **light (QR codes)** and **sound (FSK tones)**, plus an experimental **vibration (motor pulses)** channel that doesn't work reliably yet. The application is built with **Flutter** and runs on mobile devices and web browsers. Users can compose text, images, links, or files and send them through a selected physical channel. Receivers decode the signal using the camera, microphone, or accelerometer.
 
 The system includes an **adaptive decision engine** that scores channel quality (throughput, latency, reliability, confidence, stability) and can switch channels mid-transfer in simulation mode. A **reliable transport layer** provides packet sequencing, CRC-32 integrity checks, ACK/NACK, and retransmission for legacy protocol transfers. For real-time hardware use, a **direct envelope path** bypasses fragmentation for faster optical and acoustic delivery.
 
@@ -47,12 +47,12 @@ Traditional wireless protocols require shared spectrum, pairing, and network inf
 
 | # | Objective | Status |
 |---|-----------|--------|
-| 1 | Implement three physical channels (optical, acoustic, vibration) | ✅ Done |
+| 1 | Implement three physical channels (optical, acoustic, vibration) | ⚠️ Partial: optical and acoustic done; vibration is implemented but experimental and unreliable on real phones |
 | 2 | Encode/decode messages without network stack | ✅ Done |
 | 3 | Support broadcast (one sender, many receivers) | ✅ Done |
 | 4 | Build intuitive Send/Receive UI | ✅ Done |
 | 5 | Adaptive channel scoring and switching | ✅ Done (simulation) |
-| 6 | Reliable transport with ACK/retry | ✅ Done |
+| 6 | Reliable transport with ACK/retry | ⚠️ Implemented; under packet loss the ACK handling can stall a transfer ([Known Issues §3.1](docs/project/KNOWN_ISSUES.md#31-acks-are-treated-as-cumulative-high-for-the-protocol-path)) |
 | 7 | Image and video transfer via fountain-coded QR | ✅ Done |
 | 8 | Live feedback (QR progress, mic levels, live kHz readout on sender and receiver) | ✅ Done |
 | 9 | Inaudible near-ultrasonic sound mode (Silent band, 18.3–19.9 kHz) | ✅ Done |
@@ -331,6 +331,8 @@ The **Silent** band plays one tone at a time, because two simultaneous tones wou
 ---
 
 ### 8.3 Vibrate Channel
+
+> **Status: experimental.** The design below is implemented and its bit codec passes unit tests, but real phone-to-phone vibration transfers usually fail or never finish. See [Known Issues §2.8](docs/project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high).
 
 **Physical medium:** Mechanical vibration through phone contact / shared surface
 
@@ -623,7 +625,7 @@ Rates marked *nominal* are calculated from each profile's timing; *estimated* ra
 | Light (fountain QR) | ≈1.3–2.5 KB/s estimated (Auto density, 12 fps) | Line of sight, 15–25 cm | ✅ Yes | Text, images, video, files |
 | Sound, Audible (MT-FSK fountain) | ~86–286 bps nominal net (10.8–35.8 B/s) | Across a table; Rugged profile for noisy rooms | ✅ Yes | Text, small files |
 | Sound, Silent (18.3–19.9 kHz) | ~27–40 bps nominal net (3.4–5.0 B/s) | Within about half a metre; inaudible to most adults | ✅ Yes | Short texts |
-| Vibrate | ≈4–5 bps nominal raw (≈0.5 B/s; 80/180 ms pulses + 60 ms gaps) | Contact only | ❌ No | Very short text |
+| Vibrate (experimental) | ≈4–5 bps nominal raw (≈0.5 B/s; 80/180 ms pulses + 60 ms gaps) | Contact only | ❌ No | Not reliable yet |
 
 ---
 
@@ -632,7 +634,7 @@ Rates marked *nominal* are calculated from each profile's timing; *estimated* ra
 1. **No internet fallback** — devices must be physically near each other
 2. **Image size** — photos are compressed to ≤ 120 KB, and larger files need more fountain QR frames (a 40 KB photo takes about 20 s on Light)
 3. **Sound sensitivity** — ambient noise and device speaker quality affect reliability; the Silent band works only on phones whose speaker and microphone pass 19 kHz
-4. **Vibration** — requires firm physical contact; very low bit rate
+4. **Vibration** — experimental: real phone-to-phone transfers usually fail; it also needs firm physical contact and has a very low bit rate
 5. **Web platform** — no vibration channel; camera/mic permissions vary by browser
 6. **Security** — physical signals can be intercepted by nearby observers/listeners
 7. **Adaptive switching** — not active in main Send/Receive flow (user selects channel)
@@ -646,13 +648,13 @@ Rates marked *nominal* are calculated from each profile's timing; *estimated* ra
 - OFDM for Sound (more tones with a cyclic prefix against echo) for 2–3× the rate in quiet rooms; the near-ultrasonic Silent band is now shipped
 - Improved QR throughput with custom symbology
 - End-to-end encryption over physical channels
-- iOS vibration/accelerometer optimisation
+- Make the vibration channel reliable on real phones (per-phone pulse calibration, airtime-aware ACK timeout), then optimise it for iOS
 
 ---
 
 ## 20. Conclusion
 
-The Adaptive Physical Communication System demonstrates that **meaningful data exchange** — including text, links, and compressed images — is achievable using only a smartphone's built-in sensors and actuators, without any radio networking. Three complementary physical channels (light, sound, vibration) cover different use cases: broadcast groups via QR, proximity text via tones, and contact-only communication via vibration. None of the channels is encrypted or authenticated (see §18). The layered architecture (UI → controller → transport → codecs) with adaptive decision engine and reliable protocol provides a foundation for further research in offline proximity communication.
+The Adaptive Physical Communication System demonstrates that **meaningful data exchange** — including text, links, and compressed images — is achievable using only a smartphone's built-in sensors and actuators, without any radio networking. Two physical channels work today: light, for broadcast to groups via QR, and sound, for proximity text via tones. A third, contact-only communication via vibration, is implemented but still experimental and unreliable on real phones. None of the channels is encrypted or authenticated (see §18). The layered architecture (UI → controller → transport → codecs) with adaptive decision engine and reliable protocol provides a foundation for further research in offline proximity communication.
 
 ---
 

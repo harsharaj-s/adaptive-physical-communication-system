@@ -32,7 +32,7 @@ The **Nominal** column is calculated from each profile's timing. **Estimated goo
 | Light, Fast (v17, 12 fps) | 7.2 KB/s | ≈2.5 KB/s *if* the camera keeps up | Good cameras only |
 | Sound, Rugged / Safe / Standard / Fast | 10.8 / 18.1 / 27.0 / 35.8 B/s | ≈80% of nominal after fountain overhead | 0.3–2 m |
 | Sound, Silent Robust / Silent (inaudible) | 3.4 / 5.0 B/s | ≈80% of nominal | 0.1–0.5 m, phone-dependent |
-| Vibration | ≈0.52 B/s raw | Less, after packet overhead | Touching |
+| Vibration (experimental) | ≈0.52 B/s raw | Not measured: real transfers usually fail ([Known Issues §2.8](../project/KNOWN_ISSUES.md#28-vibration-transfers-are-unreliable-on-real-phones-high)) | Touching |
 
 Light is about 35–70× faster than the fastest Sound profile. That's why photos and videos go by Light.
 
@@ -63,7 +63,7 @@ Light is about 35–70× faster than the fastest Sound profile. That's why photo
 
 These are the expected times (`⌈1.25·K⌉ + 2` frames). When every frame lands, a receiver finishes after exactly K frames: "sos" is one frame, 2.4 s on Standard and 4.8 s on Silent.
 
-**Vibration:** "hi" ≈73 s, "hello" ≈79 s, a full 48-byte packet ≈148 s.
+**Vibration (calculated; the channel is experimental and real transfers usually fail):** "hi" ≈73 s, "hello" ≈79 s, a full 48-byte packet ≈148 s.
 
 ---
 
