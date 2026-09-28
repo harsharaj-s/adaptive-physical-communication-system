@@ -1383,7 +1383,10 @@ APCS builds on open-source Flutter packages, notably [`qr`](https://pub.dev/pack
 
 ## Author
 
-**Harsharaj S**: [GitHub](https://github.com/harsharaj-s) · [LinkedIn](https://www.linkedin.com/in/harsharajs)
+**Harsharaj S**
+
+<a href="https://github.com/harsharaj-s"><img src="docs/images/badge-github.svg" alt="GitHub: harsharaj-s" height="28"></a>
+<a href="https://www.linkedin.com/in/harsharajs"><img src="docs/images/badge-linkedin.svg" alt="LinkedIn: harsharajs" height="28"></a>
 
 ## License
 
