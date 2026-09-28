@@ -1,8 +1,10 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
 import 'package:adaptive_physical_communication/core/chat/chat_payload_codec.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_fountain_frame.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_fountain_modem.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_frame_sync.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_tx_profile.dart';
 import 'package:adaptive_physical_communication/core/physical/fountain/lt_codec.dart';
@@ -142,13 +144,14 @@ void main() {
             '(corrects ${profile.buildFrameCodec().correctableBytes}) '
             'frame=${profile.frameSeconds().toStringAsFixed(2)}s  '
             'net=${profile.netBytesPerSecond().toStringAsFixed(1)}B/s');
-        expect(profile.netBytesPerSecond(), greaterThan(7.0),
-            reason: '${profile.label} must beat the old single-bit FSK');
+        final floor = profile.isSilent ? 3.0 : 7.0;
+        expect(profile.netBytesPerSecond(), greaterThan(floor),
+            reason: '${profile.label} is slower than its band allows');
       }
     });
 
     test('frame recovery rate per scenario', () {
-      for (final profile in AcousticTxProfile.values) {
+      for (final profile in AcousticTxProfile.audibleValues) {
         final line = StringBuffer('${profile.label.padRight(9)} ');
         for (final scenario in AcousticScenario.all) {
           final encoder = LtEncoder(
@@ -201,8 +204,8 @@ void main() {
       expect(run.recovered, isTrue);
     });
 
-    test('every profile recovers a payload in a normal room', () {
-      for (final profile in AcousticTxProfile.values) {
+    test('every audible profile recovers a payload in a normal room', () {
+      for (final profile in AcousticTxProfile.audibleValues) {
         final envelope = ChatPayloadCodec.encode(
           type: ChatMessageType.file,
           data: Uint8List.fromList(
@@ -259,17 +262,128 @@ void main() {
       expect(run.recovered, isTrue);
     });
 
-    test('the ladder is ordered slowest to fastest', () {
-      // Automatic backoff walks this list, so the ordering is load-bearing.
-      for (var i = 1; i < AcousticTxProfile.values.length; i++) {
-        final slower = AcousticTxProfile.values[i - 1];
-        final faster = AcousticTxProfile.values[i];
-        expect(faster.netBytesPerSecond(),
-            greaterThan(slower.netBytesPerSecond()),
-            reason: '${faster.label} should out-run ${slower.label}');
-        expect(faster.slower, slower);
+    test('each band\'s ladder is ordered slowest to fastest', () {
+      // Automatic backoff walks these lists, so the ordering is load-bearing.
+      for (final band in AcousticBand.values) {
+        final ladder = AcousticTxProfile.forBand(band);
+        for (var i = 1; i < ladder.length; i++) {
+          final slower = ladder[i - 1];
+          final faster = ladder[i];
+          expect(faster.netBytesPerSecond(),
+              greaterThan(slower.netBytesPerSecond()),
+              reason: '${faster.label} should out-run ${slower.label}');
+          expect(faster.slower, slower);
+        }
+        expect(ladder.first.slower, ladder.first);
       }
-      expect(AcousticTxProfile.rugged.slower, AcousticTxProfile.rugged);
     });
   });
+
+  group('silent (near-ultrasonic) band', () {
+    test('every tone stays inside 18–20 kHz', () {
+      for (final profile in AcousticTxProfile.silentValues) {
+        final codec = profile.buildCodec();
+        expect(codec.lowestHz, greaterThan(18000));
+        expect(codec.highestHz, lessThan(20000));
+      }
+      final audible = AcousticTxProfile.standard.buildCodec();
+      expect(audible.highestHz, lessThan(7300));
+    });
+
+    test('a burst puts almost no energy where people hear', () {
+      // Includes the burst edges, where a hard start would click.
+      final burst = Float32List(1024 * 6);
+      final codec = AcousticTxProfile.silent.buildCodec();
+      final wave = codec.encode(Uint8List.fromList([0x12, 0x34, 0xAB]));
+      burst.setRange(1024, 1024 + 4096, wave);
+      AcousticFountainModem.applyEdgeFades(burst, 1024, 1024 + 4096);
+      final audibleShare = _energyBelow(burst, 16000) / _energyBelow(burst, 22050);
+      final db = 10 * math.log(audibleShare) / math.ln10;
+      // ignore: avoid_print
+      print('silent burst energy below 16 kHz: ${db.toStringAsFixed(1)} dB');
+      expect(db, lessThan(-40));
+    });
+
+    test('a text arrives in every near-ultrasonic scenario', () {
+      final envelope = ChatPayloadCodec.encodeText('Meet at gate 3');
+      expect(envelope.length, lessThanOrEqualTo(AcousticTxProfile.silent.blockLen),
+          reason: 'a short text should fit one silent frame');
+      for (final scenario in AcousticScenario.ultra) {
+        final run = runTransfer(
+          profile: AcousticTxProfile.silent,
+          envelope: envelope,
+          scenario: scenario,
+          seed: 7,
+          symbolBudget: 6,
+        );
+        // ignore: avoid_print
+        print('silent/${scenario.name} ${envelope.length}B '
+            '${run.recovered ? "ok" : "FAILED"} in '
+            '${run.seconds.toStringAsFixed(1)}s');
+        expect(run.recovered, isTrue, reason: scenario.name);
+      }
+    });
+
+    test('silent robust carries a longer message through a crowd', () {
+      final envelope = ChatPayloadCodec.encodeText(
+        'Crowded hall test: the high band is clear of voices.',
+      );
+      final run = runTransfer(
+        profile: AcousticTxProfile.silentRobust,
+        envelope: envelope,
+        scenario: AcousticScenario.crowd,
+        seed: 13,
+        symbolBudget: 6,
+      );
+      // ignore: avoid_print
+      print('silent robust/crowd ${envelope.length}B '
+          '${run.recovered ? "ok" : "FAILED"} in '
+          '${run.seconds.toStringAsFixed(1)}s');
+      expect(run.recovered, isTrue);
+    });
+
+    test('odd tone counts pack bytes across symbols losslessly', () {
+      final codec = AcousticTxProfile.silent.buildCodec();
+      final payload = Uint8List.fromList(List.generate(51, (i) => i * 5 + 1));
+      expect(codec.symbolsForBytes(payload.length), 102);
+      final wave = codec.encode(payload);
+      final soft = codec.decodeBytesSoft(
+        wave,
+        codec.samplesPerMarker,
+        payload.length,
+      );
+      expect(soft.bytes, payload);
+      expect(soft.reliability.every((r) => r > 0.9), isTrue);
+      expect(codec.markerScore(wave, 0), greaterThan(400));
+    });
+  });
+}
+
+/// Energy of [x] below [hz]: Hann-windowed DFT, 1024 samples, hop 512.
+///
+/// The windows deliberately do not line up with symbol boundaries, so any
+/// splatter from tone changes or burst edges shows up rather than hiding in
+/// exact-bin orthogonality.
+double _energyBelow(Float32List x, double hz) {
+  const n = 1024;
+  final top = math.min((hz / 44100 * n).floor(), n ~/ 2);
+  final cosT = List.generate(n, (i) => math.cos(2 * math.pi * i / n));
+  final sinT = List.generate(n, (i) => math.sin(2 * math.pi * i / n));
+  final frame = Float64List(n);
+  var sum = 0.0;
+  for (var start = 0; start + n <= x.length; start += n ~/ 2) {
+    for (var i = 0; i < n; i++) {
+      frame[i] = x[start + i] * (0.5 - 0.5 * cosT[i]);
+    }
+    for (var k = 0; k <= top; k++) {
+      var re = 0.0, im = 0.0;
+      for (var i = 0; i < n; i++) {
+        final t = (k * i) % n;
+        re += frame[i] * cosT[t];
+        im -= frame[i] * sinT[t];
+      }
+      sum += re * re + im * im;
+    }
+  }
+  return sum;
 }

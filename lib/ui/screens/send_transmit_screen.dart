@@ -12,6 +12,7 @@ import 'package:adaptive_physical_communication/ui/theme/app_layout.dart';
 import 'package:adaptive_physical_communication/ui/widgets/app_logo.dart';
 import 'package:adaptive_physical_communication/core/platform/acoustic_transmitter_state.dart';
 import 'package:adaptive_physical_communication/ui/widgets/acoustic_transfer_hud.dart';
+import 'package:adaptive_physical_communication/ui/widgets/live_tone_meter.dart';
 import 'package:adaptive_physical_communication/ui/widgets/optical_transfer_hud.dart';
 
 /// Channel-specific transmit UI after mode selection (Light / Sound / Vibrate).
@@ -368,22 +369,37 @@ class _ReadyBody extends StatelessWidget {
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      const Text('• Volume up, speaker facing the receiver',
-                          style: TextStyle(color: Colors.white70)),
-                      const Text('• Works across a table; quieter is faster',
-                          style: TextStyle(color: Colors.white70)),
-                      const Text('• Lost frames are OK — fountain recovers',
-                          style: TextStyle(color: Colors.white70)),
+                      for (final tip in app.acousticTxProfile.isSilent
+                          ? const [
+                              '• Silent: 18–20 kHz, you will not hear it',
+                              '• Media volume to max, speaker facing the mic',
+                              '• 10–50 cm apart; hold both phones still',
+                              '• Nothing arriving? Some phones cannot play or '
+                                  'hear 18 kHz — switch to Audible',
+                            ]
+                          : const [
+                              '• Volume up, speaker facing the receiver',
+                              '• Works across a table; quieter is faster',
+                              '• Lost frames are OK — fountain recovers',
+                            ])
+                        Text(tip,
+                            style: const TextStyle(color: Colors.white70)),
                       const SizedBox(height: 12),
                       AcousticProfilePicker(
                         selected: app.acousticTxProfile,
                         onChanged: app.setAcousticTxProfile,
                       ),
                       if (payload.byteSize > 0) ...[
+                        const SizedBox(height: 16),
+                        AcousticFrameBreakdown(
+                          profile: app.acousticTxProfile,
+                          envelopeBytes: payload.envelopeBytes,
+                        ),
                         const SizedBox(height: 10),
                         Text(
-                          '${payload.byteSize} B · '
-                          '~${app.acousticEtaSeconds(payload.byteSize)}s',
+                          '${payload.envelopeBytes} B on air · '
+                          '~${app.acousticEtaSeconds(payload.envelopeBytes)}s '
+                          'typical',
                           style: theme.textTheme.labelSmall
                               ?.copyWith(color: Colors.white54),
                         ),
@@ -527,6 +543,7 @@ class _SoundTxView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               AcousticTxProgressCard(onCancel: app.cancelAcousticTransmit),
+              if (tx.playing) const LiveToneMeter.sending(),
               if (!tx.playing && app.senderSnapshot?.progress != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),

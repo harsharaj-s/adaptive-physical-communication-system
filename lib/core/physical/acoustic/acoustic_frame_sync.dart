@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_fountain_frame.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/biquad_filter.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_tx_profile.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/mt_fsk_codec.dart';
 
@@ -22,9 +23,13 @@ class AcousticFrameSync {
     this.markerThreshold = 8.0,
     this.searchStep = 64,
   })  : _codec = profile.buildCodec(),
-        _frameCodec = profile.buildFrameCodec();
+        _frameCodec = profile.buildFrameCodec(),
+        _highPass = profile.band.receiveHighPassHz == null
+            ? null
+            : HighPassFilter(cutoffHz: profile.band.receiveHighPassHz!);
 
   final AcousticTxProfile profile;
+  final HighPassFilter? _highPass;
 
   /// Minimum normalised sync-tone score to treat a frame as present. Aligned
   /// markers measure in the hundreds and unrelated audio in the tens, so this
@@ -67,6 +72,8 @@ class AcousticFrameSync {
   /// Feed newly captured audio.
   void addSamples(Float32List chunk) {
     if (chunk.isEmpty) return;
+    final filter = _highPass;
+    if (filter != null) chunk = filter.apply(chunk);
     _ensureCapacity(_length + chunk.length);
     _buffer.setRange(_length, _length + chunk.length, chunk);
     _length += chunk.length;
@@ -224,6 +231,7 @@ class AcousticFrameSync {
     _cursor = 0;
     _base = 0;
     _ready.clear();
+    _highPass?.reset();
   }
 
   void resetStats() {

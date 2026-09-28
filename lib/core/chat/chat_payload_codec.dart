@@ -26,12 +26,21 @@ class ChatPayloadCodec {
     return buffer.toBytes();
   }
 
+  /// Bytes [encode] adds around the data, without building the envelope.
+  static int overheadBytes({String? fileName, String? mimeType}) =>
+      _magic.length +
+      3 +
+      utf8.encode(fileName ?? '').length +
+      utf8.encode(mimeType ?? '').length;
+
+  /// Text and links leave name and MIME empty: the type byte already says
+  /// what they are, and on sound the 21 bytes of `message.txt`/`text/plain`
+  /// cost more airtime than a short message itself. Decoders have always read
+  /// empty fields as absent, so older builds accept this unchanged.
   static Uint8List encodeText(String text) {
     return encode(
       type: ChatMessageType.text,
       data: Uint8List.fromList(utf8.encode(text)),
-      fileName: 'message.txt',
-      mimeType: 'text/plain',
     );
   }
 
@@ -39,8 +48,6 @@ class ChatPayloadCodec {
     return encode(
       type: ChatMessageType.link,
       data: Uint8List.fromList(utf8.encode(url)),
-      fileName: 'link.url',
-      mimeType: 'text/uri-list',
     );
   }
 

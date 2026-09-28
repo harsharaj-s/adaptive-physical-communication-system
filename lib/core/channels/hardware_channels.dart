@@ -9,9 +9,13 @@ import 'package:adaptive_physical_communication/core/channels/comm_channel.dart'
 import 'package:adaptive_physical_communication/core/logging/structured_logger.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_fountain_modem.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_tx_profile.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/biquad_filter.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/spectrum_analyzer.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/tone_timeline.dart';
 import 'package:adaptive_physical_communication/core/physical/hardware_phy_config.dart';
 import 'package:adaptive_physical_communication/core/physical/physical_codecs.dart';
 import 'package:adaptive_physical_communication/core/platform/acoustic_receiver_state.dart';
+import 'package:adaptive_physical_communication/core/platform/acoustic_spectrum_state.dart';
 import 'package:adaptive_physical_communication/core/platform/acoustic_transmitter_state.dart';
 import 'package:adaptive_physical_communication/core/platform/platform_capabilities.dart';
 import 'package:adaptive_physical_communication/core/protocol/packet_codec.dart';
@@ -56,6 +60,10 @@ class HardwareAcousticChannel implements CommChannel {
   double _noiseLevel = 0;
   StreamSubscription<Uint8List>? _recordSub;
   int _lastRxUiUpdateMs = 0;
+  AcousticBand? _contextBand;
+  Completer<void>? _playbackStopped;
+  final _highBandMeter = HighPassFilter(cutoffHz: 16000);
+  final _spectrum = SpectrumAnalyzer();
 
   bool get micStreaming => _micActive;
 
@@ -108,25 +116,59 @@ class HardwareAcousticChannel implements CommChannel {
     }
     await _audioPlayer.setReleaseMode(ReleaseMode.stop);
     await _audioPlayer.setVolume(1.0);
-    if (!kIsWeb) {
-      await _audioPlayer.setAudioContext(
-        AudioContext(
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: true,
-            stayAwake: true,
-            contentType: AndroidContentType.speech,
-            usageType: AndroidUsageType.voiceCommunication,
-            audioFocus: AndroidAudioFocus.gain,
-          ),
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playAndRecord,
-            options: {
-              AVAudioSessionOptions.defaultToSpeaker,
-              AVAudioSessionOptions.allowBluetooth,
-            },
-          ),
-        ),
-      );
+    await _applyAudioContext(_modem.profile.band);
+  }
+
+  /// Output routing per band. Audible keeps the speakerphone voice path it was
+  /// tuned on. Silent must use plain media playback: the voice-call path runs
+  /// speech EQ and on many phones low-passes well below 18 kHz, and Bluetooth
+  /// hands-free audio tops out at 8 kHz, so neither may carry it.
+  Future<void> _applyAudioContext(AcousticBand band) async {
+    if (kIsWeb || _contextBand == band) return;
+    _contextBand = band;
+    await _audioPlayer.setAudioContext(
+      band == AcousticBand.audible
+          ? AudioContext(
+              android: const AudioContextAndroid(
+                isSpeakerphoneOn: true,
+                stayAwake: true,
+                contentType: AndroidContentType.speech,
+                usageType: AndroidUsageType.voiceCommunication,
+                audioFocus: AndroidAudioFocus.gain,
+              ),
+              iOS: AudioContextIOS(
+                category: AVAudioSessionCategory.playAndRecord,
+                options: const {
+                  AVAudioSessionOptions.defaultToSpeaker,
+                  AVAudioSessionOptions.allowBluetooth,
+                },
+              ),
+            )
+          : AudioContext(
+              android: const AudioContextAndroid(
+                stayAwake: true,
+                audioFocus: AndroidAudioFocus.gain,
+              ),
+              iOS: AudioContextIOS(
+                category: AVAudioSessionCategory.playAndRecord,
+                options: const {AVAudioSessionOptions.defaultToSpeaker},
+              ),
+            ),
+    );
+  }
+
+  /// Play one WAV and wait for it to finish, or for [cancelTransmit].
+  /// [tones] describes the WAV for the live frequency readout.
+  Future<void> _playWav(Uint8List wav, {ToneTimeline? tones}) async {
+    final stopped = Completer<void>();
+    _playbackStopped = stopped;
+    try {
+      final completed = _audioPlayer.onPlayerComplete.first;
+      await _audioPlayer.play(BytesSource(wav));
+      if (tones != null) acousticSpectrumState.startTxBurst(tones);
+      await Future.any([completed, stopped.future]);
+    } finally {
+      if (identical(_playbackStopped, stopped)) _playbackStopped = null;
     }
   }
 
@@ -160,12 +202,17 @@ class HardwareAcousticChannel implements CommChannel {
     }
 
     try {
+      // VOICE_RECOGNITION, not VOICE_COMMUNICATION: Android's CDD requires it
+      // to run with noise suppression and AGC off and a flat response, and
+      // it is one of the two sources the near-ultrasound (18.5–20 kHz)
+      // guarantee covers. The call path's noise suppressor treats steady
+      // data tones as noise to be removed and often band-limits to 8 kHz.
       final stream = await _recorder.startStream(RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 44100,
         numChannels: 1,
         androidConfig: const AndroidRecordConfig(
-          audioSource: AndroidAudioSource.voiceCommunication,
+          audioSource: AndroidAudioSource.voiceRecognition,
         ),
       ));
       _micActive = true;
@@ -191,6 +238,7 @@ class HardwareAcousticChannel implements CommChannel {
     }
     final rms = math.sqrt(sumSq / frames.length);
     _noiseLevel = rms;
+    _spectrum.add(frames);
 
     if (_modemKind == AcousticModemKind.fountain) {
       _processFountainChunk(frames, rms);
@@ -240,12 +288,15 @@ class HardwareAcousticChannel implements CommChannel {
     _modem.addSamples(frames);
     final progress = _modem.progress;
 
+    // The filter must see every chunk to keep its state continuous.
+    final highBand = _highBandLevel(frames);
+
     // Frames landing is a far better "we can hear the sender" signal than
     // raw tone energy, so drive the meter from it when a transfer is live.
     final tone = progress.active
         ? (0.35 + 0.65 * progress.fraction)
-        : (rms * 12).clamp(0.0, 1.0);
-    _updateRxUi(rms: rms, tone: tone);
+        : math.max((rms * 12).clamp(0.0, 1.0), highBand);
+    _updateRxUi(rms: rms, tone: tone, highBand: highBand);
     acousticReceiverState.setFountainProgress(
       collected: progress.collected,
       needed: progress.needed,
@@ -261,14 +312,38 @@ class HardwareAcousticChannel implements CommChannel {
     }
   }
 
-  void _updateRxUi({required double rms, required double tone}) {
+  /// Energy above 16 kHz mapped from −70..−20 dBFS onto 0..1. Mic self-noise
+  /// up there sits near the bottom, so the meter reads close to zero until
+  /// silent tones arrive.
+  double _highBandLevel(Float32List frames) {
+    final filtered = _highBandMeter.apply(frames);
+    var sumSq = 0.0;
+    for (final s in filtered) {
+      sumSq += s * s;
+    }
+    final rms = math.sqrt(sumSq / filtered.length);
+    if (rms <= 1e-7) return 0;
+    final db = 20 * math.log(rms) / math.ln10;
+    return ((db + 70) / 50).clamp(0.0, 1.0);
+  }
+
+  void _updateRxUi({
+    required double rms,
+    required double tone,
+    double highBand = 0,
+  }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (_lastRxUiUpdateMs != 0 && now - _lastRxUiUpdateMs < 80) return;
     _lastRxUiUpdateMs = now;
+    acousticSpectrumState.setRx(_spectrum.analyze());
 
     final input = (rms * 12).clamp(0.0, 1.0);
     final toneLevel = tone.clamp(0.0, 1.0);
-    acousticReceiverState.setLevels(input: input, tone: toneLevel);
+    acousticReceiverState.setLevels(
+      input: input,
+      tone: toneLevel,
+      highBand: highBand,
+    );
 
     if (toneLevel > 0.12 &&
         acousticReceiverState.phase == AcousticRxPhase.listening) {
@@ -321,30 +396,40 @@ class HardwareAcousticChannel implements CommChannel {
     // The microphone has to go quiet: the recorder holds the audio session in
     // voice-communication mode, which ducks our own playback.
     await _stopMic();
+    await _applyAudioContext(_modem.profile.band);
     acousticTransmitterState.beginAcoustic(
       totalBytes: envelope.length,
       profileLabel: _modem.profile.label,
       estimateSeconds: _modem.estimateSeconds(envelope.length),
+      silent: _modem.profile.isSilent,
     );
 
+    ToneTimeline? burstTones;
     try {
       await _modem.transmit(
         envelope: envelope,
-        play: (wav) async {
-          await _audioPlayer.play(BytesSource(wav));
-          await _audioPlayer.onPlayerComplete.first;
-        },
+        play: (wav) => _playWav(wav, tones: burstTones),
         shouldContinue: () => _running,
         onProgress: acousticTransmitterState.setAcousticProgress,
+        onBurst: (tones) => burstTones = tones,
       );
       _packetsSent++;
     } finally {
+      acousticSpectrumState.endTx();
       acousticTransmitterState.endAcoustic();
     }
   }
 
-  /// Stop a rateless sound transmission early.
-  void cancelTransmit() => _modem.cancelTransmit();
+  /// Stop a rateless sound transmission now, mid-burst included: a burst is
+  /// several seconds of audio, too long to let run out after Stop.
+  void cancelTransmit() {
+    if (!_modem.transmitting) return;
+    _modem.cancelTransmit();
+    acousticSpectrumState.endTx();
+    unawaited(_audioPlayer.stop());
+    final stopped = _playbackStopped;
+    if (stopped != null && !stopped.isCompleted) stopped.complete();
+  }
 
   Future<List<Uint8List>> receiveEnvelopes() async {
     final batch = List<Uint8List>.from(_envelopeBuffer);
@@ -369,6 +454,8 @@ class HardwareAcousticChannel implements CommChannel {
     _decoder.reset();
     _modem.stopReceive();
     _lastRxUiUpdateMs = 0;
+    _spectrum.reset();
+    acousticSpectrumState.resetRx();
     if (_micActive) {
       _micActive = false;
       try {
@@ -382,6 +469,7 @@ class HardwareAcousticChannel implements CommChannel {
   @override
   Future<void> stop() async {
     _running = false;
+    cancelTransmit();
     await _stopMic();
     await _audioPlayer.stop();
     acousticReceiverState.reset(keepDecodeCount: true);

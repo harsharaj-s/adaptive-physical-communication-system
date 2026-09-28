@@ -10,6 +10,7 @@ import 'package:adaptive_physical_communication/ui/models/physical_channel_mode.
 import 'package:adaptive_physical_communication/ui/theme/app_layout.dart';
 import 'package:adaptive_physical_communication/ui/widgets/app_logo.dart';
 import 'package:adaptive_physical_communication/ui/widgets/acoustic_transfer_hud.dart';
+import 'package:adaptive_physical_communication/ui/widgets/live_tone_meter.dart';
 import 'package:adaptive_physical_communication/ui/widgets/mode_picker_sheet.dart';
 import 'package:adaptive_physical_communication/ui/widgets/optical_aim_guide.dart';
 import 'package:adaptive_physical_communication/ui/widgets/optical_camera_preview.dart';
@@ -590,7 +591,8 @@ class _SoundListenView extends StatelessWidget {
                         micLive
                             ? 'Input level shows the mic is working. Point the '
                                 'sender\'s speaker this way and turn its volume up. '
-                                'Works across a table; a quieter room is faster.'
+                                'Listens for audible and silent (18–20 kHz) '
+                                'senders at every speed.'
                             : 'Allow microphone access so this device can hear the sender.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -604,6 +606,7 @@ class _SoundListenView extends StatelessWidget {
               ),
             ),
             const AcousticRxProgressCard(),
+            if (micLive) const LiveToneMeter.hearing(),
             _LevelMeter(
               label: 'Mic input',
               value: input,
@@ -614,6 +617,14 @@ class _SoundListenView extends StatelessWidget {
               label: 'Tone signal',
               value: tone,
               color: tone > 0.12 ? Colors.amberAccent : Colors.white24,
+            ),
+            const SizedBox(height: 10),
+            _LevelMeter(
+              label: 'Silent band 18–20 kHz',
+              value: rx.highBandLevel,
+              color: rx.highBandLevel > 0.3
+                  ? Colors.tealAccent
+                  : Colors.white24,
             ),
             const SizedBox(height: 12),
             Row(

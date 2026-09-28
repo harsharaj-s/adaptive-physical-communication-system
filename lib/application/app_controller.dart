@@ -117,6 +117,7 @@ class AppController extends ChangeNotifier {
     _cancelRequested = true;
     opticalTransmitterState.setTransmitting(false);
     vibrationTransmitterState.setTransmitting(false);
+    cancelAcousticTransmit();
     notifyListeners();
   }
 
@@ -172,14 +173,11 @@ class AppController extends ChangeNotifier {
           (channel == CommChannelId.acoustic &&
               envelope.length <= acousticLimit)) {
         final ok = await _sendDirectEnvelope(envelope, channel);
-        // Light has no return path: the sender only knows it streamed.
+        // Neither broadcast channel has a return path: the sender only knows
+        // it played or streamed, never that the receiver finished.
         _markChatMessage(
           id,
-          !ok
-              ? ChatMessageStatus.failed
-              : channel == CommChannelId.optical
-                  ? ChatMessageStatus.sent
-                  : ChatMessageStatus.delivered,
+          ok ? ChatMessageStatus.sent : ChatMessageStatus.failed,
         );
         return ok;
       }

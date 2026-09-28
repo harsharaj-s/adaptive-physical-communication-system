@@ -12,6 +12,7 @@ class AcousticTransmitterState extends ChangeNotifier {
   int _symbolsPlanned = 0;
   String _profileLabel = '';
   double _estimateSeconds = 0;
+  bool _silent = false;
 
   bool get playing => _playing;
   int get totalBytes => _totalBytes;
@@ -19,6 +20,9 @@ class AcousticTransmitterState extends ChangeNotifier {
   int get symbolsPlanned => _symbolsPlanned;
   String get profileLabel => _profileLabel;
   double get estimateSeconds => _estimateSeconds;
+
+  /// Playing near-ultrasonic tones, so the user will hear nothing.
+  bool get silent => _silent;
 
   double get fraction => _symbolsPlanned == 0
       ? 0
@@ -28,11 +32,13 @@ class AcousticTransmitterState extends ChangeNotifier {
     required int totalBytes,
     required String profileLabel,
     required double estimateSeconds,
+    bool silent = false,
   }) {
     _playing = true;
     _totalBytes = totalBytes;
     _profileLabel = profileLabel;
     _estimateSeconds = estimateSeconds;
+    _silent = silent;
     _symbolsSent = 0;
     _symbolsPlanned = 0;
     notifyListeners();

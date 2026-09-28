@@ -6,6 +6,7 @@ import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_frame_sync.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/acoustic_tx_profile.dart';
 import 'package:adaptive_physical_communication/core/physical/acoustic/mt_fsk_codec.dart';
+import 'package:adaptive_physical_communication/core/physical/acoustic/tone_timeline.dart';
 import 'package:adaptive_physical_communication/core/physical/fountain/lt_codec.dart';
 import 'package:adaptive_physical_communication/core/physical/physical_codecs.dart';
 import 'package:adaptive_physical_communication/core/protocol/packet_codec.dart';
@@ -269,11 +270,15 @@ class AcousticFountainModem {
   /// [shouldContinue] says stop, or until [maxSymbols] (default [symbolBudget])
   /// runs out. A fixed count would strand a receiver that lost a burst of
   /// frames to a door slam just short of the finish.
+  ///
+  /// [onBurst], if given, receives each burst's [ToneTimeline] just before
+  /// that burst is handed to [play].
   Future<void> transmit({
     required Uint8List envelope,
     required Future<void> Function(Uint8List wav) play,
     bool Function()? shouldContinue,
     void Function(int sent, int needed)? onProgress,
+    void Function(ToneTimeline tones)? onBurst,
     int? maxSymbols,
   }) async {
     final codec = _profile.buildCodec();
@@ -298,6 +303,9 @@ class AcousticFountainModem {
       while (_txActive && index < limit) {
         if (shouldContinue != null && !shouldContinue()) break;
         final count = math.min(burst, limit - index);
+        final tones = onBurst == null
+            ? null
+            : ToneTimeline(sampleRate: codec.sampleRate);
         final wav = pcmToWav(
           _renderBurst(
             codec: codec,
@@ -305,8 +313,10 @@ class AcousticFountainModem {
             encoder: encoder,
             firstSymbol: index,
             count: count,
+            tones: tones,
           ),
         );
+        if (tones != null) onBurst!(tones);
         await play(wav);
         index += count;
         _txSymbolsSent = index;
@@ -329,11 +339,19 @@ class AcousticFountainModem {
     required LtEncoder encoder,
     required int firstSymbol,
     required int count,
+    ToneTimeline? tones,
   }) {
+    // A little silence up front lets the output stream settle before the
+    // first sync burst, which would otherwise be clipped by fade-in; a
+    // shorter tail keeps players that trim the last buffer off the data.
+    final lead = (codec.sampleRate * 0.12).round();
+    final tail = (codec.sampleRate * 0.04).round();
+
+    tones?.addSilence(lead);
     final chunks = <Float32List>[];
     for (var i = 0; i < count; i++) {
       final symbolIndex = firstSymbol + i;
-      chunks.add(codec.encode(frameCodec.encode(
+      final codeword = frameCodec.encode(
         AcousticFrame(
           sessionId: encoder.sessionId & 0xFF,
           symbolIndex: symbolIndex,
@@ -342,20 +360,39 @@ class AcousticFountainModem {
           fileLen: encoder.fileLen,
           payload: encoder.symbolAt(symbolIndex),
         ),
-      )));
+      );
+      chunks.add(codec.encode(codeword));
+      if (tones != null) codec.describe(codeword, tones);
     }
+    tones?.addSilence(tail);
 
-    // A little silence up front lets the output stream settle before the
-    // first sync burst, which would otherwise be clipped by fade-in.
-    final lead = (codec.sampleRate * 0.12).round();
-    final total = chunks.fold<int>(lead, (a, c) => a + c.length);
+    final total = chunks.fold<int>(lead + tail, (a, c) => a + c.length);
     final out = Float32List(total);
     var offset = lead;
     for (final chunk in chunks) {
       out.setRange(offset, offset + chunk.length, chunk);
       offset += chunk.length;
     }
+    applyEdgeFades(out, lead, offset);
     return out;
+  }
+
+  /// Raised-cosine ramps over the first and last [fadeSamples] of
+  /// `samples[start, end)`. Tones are phase-continuous inside a burst, so its
+  /// two edges are the only places a hard step could click — and a click is
+  /// broadband, audible even when the tone that caused it is not.
+  static void applyEdgeFades(
+    Float32List samples,
+    int start,
+    int end, {
+    int fadeSamples = 256,
+  }) {
+    final n = math.min(fadeSamples, (end - start) ~/ 2);
+    for (var i = 0; i < n; i++) {
+      final gain = 0.5 - 0.5 * math.cos(math.pi * i / n);
+      samples[start + i] *= gain;
+      samples[end - 1 - i] *= gain;
+    }
   }
 
   int _newSessionId() =>

@@ -15,6 +15,7 @@ class AcousticReceiverState extends ChangeNotifier {
   AcousticRxPhase _phase = AcousticRxPhase.idle;
   double _inputLevel = 0;
   double _toneStrength = 0;
+  double _highBandLevel = 0;
   int _packetsDecoded = 0;
 
   int _collected = 0;
@@ -25,6 +26,11 @@ class AcousticReceiverState extends ChangeNotifier {
   AcousticRxPhase get phase => _phase;
   double get inputLevel => _inputLevel;
   double get toneStrength => _toneStrength;
+
+  /// Level above 16 kHz on a dB scale (0 = −70 dBFS, 1 = −20 dBFS). The only
+  /// live sign that silent tones are arriving, since the full-band input
+  /// meter barely moves for them.
+  double get highBandLevel => _highBandLevel;
   int get packetsDecoded => _packetsDecoded;
 
   /// Fountain symbols recovered so far, and how many the payload needs.
@@ -56,7 +62,11 @@ class AcousticReceiverState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setLevels({required double input, required double tone}) {
+  void setLevels({
+    required double input,
+    required double tone,
+    double highBand = 0,
+  }) {
     var changed = false;
     if ((_inputLevel - input).abs() > 0.02) {
       _inputLevel = input;
@@ -64,6 +74,10 @@ class AcousticReceiverState extends ChangeNotifier {
     }
     if ((_toneStrength - tone).abs() > 0.02) {
       _toneStrength = tone;
+      changed = true;
+    }
+    if ((_highBandLevel - highBand).abs() > 0.02) {
+      _highBandLevel = highBand;
       changed = true;
     }
     if (changed) notifyListeners();
@@ -108,6 +122,7 @@ class AcousticReceiverState extends ChangeNotifier {
     _phase = AcousticRxPhase.idle;
     _inputLevel = 0;
     _toneStrength = 0;
+    _highBandLevel = 0;
     _collected = 0;
     _needed = 0;
     if (!keepDecodeCount) _packetsDecoded = 0;

@@ -100,8 +100,9 @@ void main() {
       expect(run.bursts, lessThanOrEqualTo(3));
     });
 
-    test('every profile completes a loopback in a normal room', () async {
-      for (final profile in AcousticTxProfile.values) {
+    test('every audible profile completes a loopback in a normal room',
+        () async {
+      for (final profile in AcousticTxProfile.audibleValues) {
         final run = await loopback(
           envelope: Uint8List.fromList(
             List.generate(220, (i) => (i * 29 + 3) & 0xFF),
@@ -137,9 +138,10 @@ void main() {
         ..startReceive();
       expect(receiver.rxProfile, isNull);
 
-      // Consecutive messages at different speeds, one listening receiver.
+      // Consecutive messages at different speeds and bands, one receiver.
       for (final profile in [
         AcousticTxProfile.rugged,
+        AcousticTxProfile.silent,
         AcousticTxProfile.standard,
         AcousticTxProfile.safe,
       ]) {
@@ -174,6 +176,23 @@ void main() {
       expect(bursts, greaterThan(0));
       expect(receiver.takeEnvelopes(), isEmpty);
       expect(receiver.progress.framesRepaired, 0);
+    });
+
+    test('silent text round-trips through a hand-held loopback', () async {
+      final receiver = AcousticFountainModem()..startReceive();
+      final envelope = ChatPayloadCodec.encodeText('SOS');
+      final run = await loopback(
+        envelope: envelope,
+        profile: AcousticTxProfile.silent,
+        scenario: AcousticScenario.ultraHand,
+        receiver: receiver,
+      );
+      expect(run.recovered, isTrue);
+      expect(envelope.length, 10, reason: 'compact text envelope');
+      // ignore: avoid_print
+      print('silent SOS: ${envelope.length}B in ${run.bursts} bursts, '
+          '${AcousticTxProfile.silent.frameSeconds().toStringAsFixed(2)}s '
+          'per frame');
     });
 
     test('changing profile mid-listen restarts the receiver cleanly', () {

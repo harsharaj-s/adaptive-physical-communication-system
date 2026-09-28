@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
@@ -20,6 +21,19 @@ class ComposePayload {
   final String? mimeType;
 
   int get byteSize => data.length;
+
+  /// Size of [toEnvelope] without building it — what actually goes on air.
+  /// Photos are recompressed before sending, so for them this is an upper
+  /// bound.
+  int get envelopeBytes => switch (type) {
+        ChatMessageType.text || ChatMessageType.link when text != null =>
+          ChatPayloadCodec.overheadBytes() + utf8.encode(text!).length,
+        _ => ChatPayloadCodec.overheadBytes(
+              fileName: fileName,
+              mimeType: mimeType,
+            ) +
+            data.length,
+      };
 
   String get preview => switch (type) {
         ChatMessageType.text => text ?? '',
