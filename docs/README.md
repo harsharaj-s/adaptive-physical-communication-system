@@ -18,6 +18,65 @@ The root [`README.md`](../README.md) is a one-file technical manual. The documen
 | **Explaining how it works** (viva, report, interview) | [Architecture](architecture/ARCHITECTURE.md) → [Fountain Code](algorithms/FOUNTAIN_CODE.md) → [Light Channel](channels/LIGHT_CHANNEL.md) → [Sound Channel](channels/SOUND_CHANNEL.md) → [Calculations](algorithms/CALCULATIONS.md) |
 | **Changing the code** | [Architecture](architecture/ARCHITECTURE.md) → [API Reference](development/API_REFERENCE.md) → [UI Guide](development/UI_GUIDE.md) → [Testing](development/TESTING.md) → [Contributing](development/CONTRIBUTING.md) |
 | **Checking limits and risks** | [Known Issues](project/KNOWN_ISSUES.md) → [Security](operations/SECURITY.md) → [Permissions and Privacy](operations/PERMISSIONS_AND_PRIVACY.md) |
+| **Contributing** to the project | [`CONTRIBUTING.md`](../CONTRIBUTING.md) → [Contributing (developer guide)](development/CONTRIBUTING.md) → [Code of Conduct](../CODE_OF_CONDUCT.md) |
+
+---
+
+## Documentation by type
+
+The documents follow the [Diátaxis](https://diataxis.fr/) framework: each one is mainly a tutorial, a how-to guide, a reference or an explanation. Knowing which kind you need helps you pick the right page.
+
+### Tutorials: learn by doing
+
+| Document | What you'll do |
+|---|---|
+| [Installation](getting-started/INSTALLATION.md) | Go from a clean machine to the app running on a phone, in Chrome and in the test suite |
+| [User Guide](getting-started/USER_GUIDE.md) | Make your first transfer, then learn every screen and button |
+
+### How-to guides: get a specific job done
+
+| Document | The job |
+|---|---|
+| [Showcase Guide](getting-started/SHOWCASE_GUIDE.md) | Run a live demo, with a checklist, script, talking points and a recovery plan |
+| [Troubleshooting](operations/TROUBLESHOOTING.md) | Find the cause of a symptom and fix it |
+| [Build and Release](operations/BUILD_AND_RELEASE.md) | Produce signed Android, iOS and web builds |
+| [Contributing (developer guide)](development/CONTRIBUTING.md) | Add a profile, a modem or a sample, and change a wire format safely |
+| [Media Pipeline](development/MEDIA_PIPELINE.md) | Regenerate demo samples and explainer videos |
+
+### Reference: look up exact facts
+
+| Document | What it lists |
+|---|---|
+| [API Reference](development/API_REFERENCE.md) | Every public class, function and constant in `lib/core`, `lib/application` and `lib/main.dart` |
+| [Data Formats](architecture/DATA_FORMATS.md) | Every byte layout, with real hex dumps |
+| [Calculations](algorithms/CALCULATIONS.md) | Every formula and worked number |
+| [UI Guide](development/UI_GUIDE.md) | Screens, widgets, navigation and state management |
+| [Testing](development/TESTING.md) | Every test file, the simulators and the device checklist |
+| [Simulation Lab](development/SIMULATION_LAB.md) | The medium model, scenarios, orchestrator and comparison |
+| [Performance](operations/PERFORMANCE.md) | Throughput, timing tables, CPU and memory |
+| [Permissions and Privacy](operations/PERMISSIONS_AND_PRIVACY.md) | Every permission, why it's needed, and how data is handled |
+| [Known Issues](project/KNOWN_ISSUES.md) | Limitations and code-review findings |
+| [Changelog](project/CHANGELOG.md) | What changed in each milestone |
+| [Glossary](project/GLOSSARY.md) | Terms and abbreviations |
+| [References](project/REFERENCES.md) | Papers, standards and libraries |
+
+### Explanation: understand why
+
+| Document | The question it answers |
+|---|---|
+| [System Architecture](architecture/ARCHITECTURE.md) | How are the layers and modules put together? |
+| [Design Decisions](architecture/DESIGN_DECISIONS.md) | Why was each major choice made, and what else was considered? |
+| [Light Channel](channels/LIGHT_CHANNEL.md) | How does the animated fountain QR link work? |
+| [Sound Channel](channels/SOUND_CHANNEL.md) | How do MT-FSK, Reed-Solomon and fountain coding work over audio? |
+| [Vibration Channel](channels/VIBRATION_CHANNEL.md) | How does pulse-width keying work between motor and accelerometer? |
+| [Legacy Modems](channels/LEGACY_MODEMS.md) | What came before, and why was it replaced? |
+| [Fountain Code](algorithms/FOUNTAIN_CODE.md) | How does the LT code let the receiver finish with any K frames? |
+| [Reed-Solomon](algorithms/REED_SOLOMON.md) | How are corrupted bytes repaired? |
+| [Signal Processing](algorithms/SIGNAL_PROCESSING.md) | How are tones detected, synchronised and shown live? |
+| [Adaptive Engine](algorithms/ADAPTIVE_ENGINE.md) | How are channels scored and switched? |
+| [Security](operations/SECURITY.md) | What is protected, what isn't, and why? |
+| [FAQ](getting-started/FAQ.md) | Short answers to the questions people ask most |
+| [Roadmap](project/ROADMAP.md) | Where could the project go next? |
 
 ---
 
@@ -43,7 +102,7 @@ docs/
 ├── algorithms/
 │   ├── FOUNTAIN_CODE.md               LT code: encoding, proofs, GF(2) decoder, worked example
 │   ├── REED_SOLOMON.md                GF(256), Berlekamp–Massey, Forney, erasures, GMD
-│   ├── SIGNAL_PROCESSING.md           Goertzel, tone orthogonality, sync, QR imaging
+│   ├── SIGNAL_PROCESSING.md           Goertzel, tone orthogonality, sync, QR imaging, live-readout FFT
 │   ├── ADAPTIVE_ENGINE.md             Transport, state machine, scoring, switching
 │   └── CALCULATIONS.md                Every formula and worked number in one place
 ├── development/
@@ -59,12 +118,13 @@ docs/
 │   ├── SECURITY.md                    Threat model and what is (not) protected
 │   ├── PERFORMANCE.md                 Throughput, timing tables, CPU and memory
 │   └── TROUBLESHOOTING.md             Symptoms → causes → fixes
-└── project/
-    ├── CHANGELOG.md                   Version history
-    ├── ROADMAP.md                     Planned and possible future work
-    ├── KNOWN_ISSUES.md                Limitations and code-review findings
-    ├── GLOSSARY.md                    Terms and abbreviations
-    └── REFERENCES.md                  Papers, standards, libraries
+├── project/
+│   ├── CHANGELOG.md                   Version history
+│   ├── ROADMAP.md                     Planned and possible future work
+│   ├── KNOWN_ISSUES.md                Limitations and code-review findings
+│   ├── GLOSSARY.md                    Terms and abbreviations
+│   └── REFERENCES.md                  Papers, standards, libraries
+└── images/                            Screenshots used by the guides and the root README
 ```
 
 ---
@@ -109,8 +169,9 @@ docs/
 | Light frame overhead | 26 bytes (22 header + 4 CRC-32) | [Data Formats](architecture/DATA_FORMATS.md#3-apcf-v3-light-frame) |
 | Light bytes per QR (Auto) | 160 / 240 / 330 → QR v8 / v10 / v12 | [Light Channel](channels/LIGHT_CHANNEL.md#5-density-profiles-and-the-auto-rule) |
 | Light display rate | 12 frames/s (Safe: 8) | [Light Channel](channels/LIGHT_CHANNEL.md) |
-| Sound rates | 10.8 / 18.1 / 27.0 / 35.8 B/s | [Sound Channel](channels/SOUND_CHANNEL.md#7-profiles) |
+| Sound rates | 10.8 / 18.1 / 27.0 / 35.8 B/s audible; 3.4 / 5.0 B/s Silent (18–20 kHz) | [Sound Channel](channels/SOUND_CHANNEL.md#7-profiles) |
 | Sound tone spacing | 44 100 / 1024 = 43.066 Hz | [Signal Processing](algorithms/SIGNAL_PROCESSING.md) |
+| Sound time per bit | Standard 2.9 ms raw / 4.6 ms net; Silent 11.6 ms raw / 25 ms net (16-ary FSK, 4 bits per tone) | [FAQ](getting-started/FAQ.md#sound-channel) |
 | Reed-Solomon repair | up to 12 errors or 24 erasures per 99-byte frame | [Reed-Solomon](algorithms/REED_SOLOMON.md) |
 | Fountain overhead | mean 0–2.2 extra symbols | [Fountain Code](algorithms/FOUNTAIN_CODE.md#7-measured-overhead) |
 | Adaptive score | 0.35T + 0.25R + 0.15L + 0.15C + 0.10S | [Adaptive Engine](algorithms/ADAPTIVE_ENGINE.md) |
@@ -121,12 +182,32 @@ docs/
 ## Conventions used in these documents
 
 - **Byte order.** Light and Sound frames are **big-endian**. Protocol packets are **little-endian**. Every table says which.
-- **Hex dumps** are real output of the project's own codecs (generated on 27 Sep 2026), not hand-written.
+- **Hex dumps** are real output of the project's own codecs (generated on 27 Sep 2026; envelope and Sound dumps regenerated on 28 Sep 2026 for the compact envelopes and the Silent band), not hand-written.
 - **"K"** always means the number of source blocks in a fountain transfer.
 - **File paths** are relative to the project root, e.g. `lib/core/physical/fountain/lt_codec.dart`.
 - **Numbers** are copied from the code. If the code and a document ever disagree, the code wins. Please fix the document (see [Contributing](development/CONTRIBUTING.md)).
+- **Style.** British English in prose, "you" for the reader, **bold** for buttons and labels in the app, `code font` for files, classes and commands. The full style rules are in [Contributing §9](development/CONTRIBUTING.md#9-documentation).
+
+---
+
+## Getting help
+
+1. Search these documents; the [FAQ](getting-started/FAQ.md) and [Troubleshooting](operations/TROUBLESHOOTING.md) answer most questions.
+2. Check [Known Issues](project/KNOWN_ISSUES.md) to see whether the problem is already known.
+3. Open an issue on GitHub using the **Bug report**, **Device test report** or **Feature request** form.
+4. For a security problem, don't open an issue; follow the [security policy](../SECURITY.md).
+
+---
 
 ## Related top-level files
 
-- [`README.md`](../README.md): single-file technical manual.
-- [`PROJECT_REPORT.md`](../PROJECT_REPORT.md): academic-style report (abstract, objectives, literature survey). Some parameters in it predate the current modems; where it differs, these documents are current.
+| File | Purpose |
+|---|---|
+| [`README.md`](../README.md) | Single-file technical manual and project front page |
+| [`PROJECT_REPORT.md`](../PROJECT_REPORT.md) | Academic-style report (abstract, objectives, literature survey) |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | How to report bugs, share device results and open pull requests |
+| [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Community rules (Contributor Covenant 2.1) |
+| [`SECURITY.md`](../SECURITY.md) | Supported versions and private vulnerability reporting |
+| [`CITATION.cff`](../CITATION.cff) | Citation metadata for academic use |
+| [`LICENSE`](../LICENSE) | MIT License |
+| [`.github/`](../.github/) | Issue forms and the pull request template |

@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software or its results in your work, please cite it as below."
+type: software
+title: "Adaptive Physical Communication System (APCS)"
+abstract: >-
+  A Flutter app for Android, iOS and the web that sends text, links, photos
+  and short videos from one phone to another using only light (animated
+  fountain-coded QR codes), sound (16-ary multi-tone FSK with Reed-Solomon
+  error correction and LT fountain coding, including a near-ultrasonic
+  18-20 kHz band) or vibration, with no radio of any kind in the data path.
+authors:
+  - family-names: "S"
+    given-names: "Harsharaj"
+repository-code: "https://github.com/harsharaj-s/adaptive_physical_communication_system"
+license: MIT
+version: "1.0.0"
+keywords:
+  - screen-camera communication
+  - acoustic modem
+  - fountain code
+  - LT code
+  - Reed-Solomon
+  - FSK
+  - QR code
+  - near-ultrasonic
+  - Flutter

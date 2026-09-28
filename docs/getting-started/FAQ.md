@@ -6,6 +6,18 @@ Back to the [documentation index](../README.md).
 
 ---
 
+## Contents
+
+- [General](#general)
+- [Light channel](#light-channel)
+- [Sound channel](#sound-channel)
+- [Vibration channel](#vibration-channel)
+- [Photos, videos and the Gallery](#photos-videos-and-the-gallery)
+- [Security and privacy](#security-and-privacy)
+- [Development](#development)
+
+---
+
 ## General
 
 **What does the app do?**
@@ -56,13 +68,41 @@ Yes, on Android. The sender sets its window brightness to full while streaming a
 ## Sound channel
 
 **What does it sound like?**
-A series of chirpy chords between about 1.2 and 7.2 kHz. Each frame starts with a two-tone sync burst.
+On **Audible**, a series of chirpy chords between about 1.2 and 7.2 kHz. Each frame starts with a two-tone sync burst. On **Silent**, most adults hear nothing: the tones sit between 18.3 and 19.9 kHz. Children, some young adults and pets may hear a faint whine.
 
 **How fast is it?**
-Rugged 10.8, Safe 18.1, Standard 27.0 and Fast 35.8 bytes per second of payload. A short text takes 7–21 s depending on profile. See [Sound Channel](../channels/SOUND_CHANNEL.md).
+Rugged 10.8, Safe 18.1, Standard 27.0 and Fast 35.8 bytes per second of payload; Silent 5.0 and Silent Robust 3.4. A short text fits one frame: 1.8–3 s on the audible profiles and 4.8 s on Silent when the first frame is heard cleanly, and up to about 12 s (audible) or 19 s (Silent) in a normal room. See [Sound Channel](../channels/SOUND_CHANNEL.md).
+
+**How can it send without making a sound?**
+The Silent band uses frequencies above most adults' hearing, which phone speakers and microphones can still reproduce. It plays one tone at a time, because two high tones together create an audible "difference" tone in a small speaker. Voices and music sit far below 18 kHz, so a filter removes them before decoding. It works only if both phones handle 19 kHz; the *Silent band* meter on the receiver shows whether they do. See [Sound Channel §14](../channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic).
+
+**Can I see which frequency is being sent and received?**
+Yes. While playing, the sender shows **Sending now**, the exact tone on air in kHz. Silent shows one tone between 18.3 and 19.9 kHz; Audible shows a range such as *1.94–6.80 kHz · 8 tones at once*. While listening, the receiver shows **Hearing now**, the strongest frequency its microphone picks up. Both have a 0–22 kHz strip with the two bands shaded. When the sound is getting through, both phones show the same kHz. See [Sound Channel](../channels/SOUND_CHANNEL.md).
+
+**Why FSK and not ASK or PSK?**
+The three M-ary families carry data in amplitude (ASK), phase (PSK) or frequency (FSK).
+- **Amplitude** changes with distance, volume, the user's hand and room echoes.
+- **Phase** is scrambled by echoes, by hand movement (at 19 kHz, 1 cm of movement is about 200°) and by the two phones' unsynchronised clocks.
+- **Frequency** survives all of that. The receiver only has to decide which of 16 tones is loudest.
+
+FSK also has a constant envelope, which suits small speakers, and it trades bandwidth, which is plentiful, for power, which is scarce. See [ADR-10](../architecture/DESIGN_DECISIONS.md#adr-10-multi-tone-fsk-for-sound).
+
+**How many milliseconds per bit is that?**
+Bits aren't sent one at a time. Each tone carries 4 bits (1 of 16 frequencies) for a whole symbol, and Audible plays 6 or 8 tones at once.
+
+| Profile | Symbol, bits | Raw ms per bit | Message data ms per bit |
+|---|---|---|---|
+| Rugged | 139 ms, 24 bits | 5.8 | 11.6 |
+| Safe | 93 ms, 24 bits | 3.9 | 6.9 |
+| Standard | 93 ms, 32 bits | 2.9 | 4.6 |
+| Fast | 70 ms, 32 bits | 2.2 | 3.5 |
+| Silent | 46 ms, 4 bits | 11.6 | 25 |
+| Silent Robust | 70 ms, 4 bits | 17.4 | 37 |
+
+Raw is symbol time divided by bits. The last column is 1 ÷ the net bit rate, after the sync marker, header, CRC and Reed-Solomon parity. The older two-tone FSK modem sends one bit per tone at 18 ms per bit, with no error correction.
 
 **Does the receiver need to pick the same speed?**
-No. The receiver listens for all four profiles at once and locks onto the one the sender uses.
+No. The receiver listens for all six profiles, audible and Silent, at once and locks onto the one the sender uses.
 
 **How does it cope with noise?**
 Three layers:

@@ -30,11 +30,11 @@ Back to the [documentation index](../README.md).
 
 ## 2. Transfer behaviour
 
-### 2.1 Sound sends are marked "delivered" (Medium)
+### 2.1 Sound sends were marked "delivered" (fixed)
 
-- **Symptom.** After a Sound send, the sender's chat bubble shows *delivered*, even if nobody was listening.
-- **Cause.** `AppController.sendPhysicalMessage` marks Light sends as `sent` but Sound direct sends as `delivered` (`lib/application/app_controller.dart`, the status choice after `_sendDirectEnvelope`). The fountain Sound path is broadcast-only and has no acknowledgement.
-- **Fix.** Use `ChatMessageStatus.sent` for both direct paths, as for Light.
+- **Was.** After a Sound send, the sender's chat bubble showed *delivered*, even if nobody was listening. The fountain Sound path is broadcast-only and has no acknowledgement.
+- **Now.** `AppController.sendPhysicalMessage` marks both direct paths (Light and Sound) as `sent`, or `failed`.
+- **Also fixed at the same time.** Pressing **Stop** during a Sound send used to let the current burst (up to four frames, about 10 s) play out. `HardwareAcousticChannel.cancelTransmit` now stops the audio player immediately, and the transfer screen's cancel reaches it.
 
 ### 2.2 Sound messages over 8 KiB silently use a path the receiver can't decode (High)
 
@@ -54,6 +54,30 @@ Back to the [documentation index](../README.md).
 ### 2.4 The Light sender can't know when the receiver finished (Low, by design)
 
 Light has no return path, so the sender streams until **Stop** or the 10-minute safety cap. The receiver's **DONE** is the only completion signal. **Resume streaming** continues the same session if the sender stopped too early. See [ADR-14](../architecture/DESIGN_DECISIONS.md).
+
+### 2.5 The Silent band depends on each phone's 19 kHz response (Medium, by design)
+
+- **Symptom.** Silent transfers work between some pairs of phones and not others, or only in one direction. The receiver's *Silent band 18–20 kHz* meter stays near zero.
+- **Cause.** Phone speakers and microphones aren't specified above about 16 kHz. Some are 30–40 dB down at 19 kHz; some capture paths low-pass the microphone even with the voice-recognition source (`HardwareAcousticChannel`), which Android only guarantees to pass 18.5–20 kHz on devices that declare near-ultrasound support. Bluetooth hands-free audio stops at 8 kHz, and web browsers resample the microphone.
+- **Impact.** The simulator can't predict a given phone. Its near-ultrasonic results (Silent 14–18 of 18 frames in every scenario) assume the tones arrive at the stated SNR.
+- **Workaround.** Media volume to maximum, phones 10–50 cm apart, speaker facing the microphone. Try swapping the roles. Fall back to **Audible** if the meter doesn't move. Rehearse on the actual demo phones.
+
+### 2.6 Silent's first frame costs 4.8 s even for "sos" (Low, by design)
+
+A Silent frame always carries a 24-byte block, so a three-letter message takes one 4.8 s frame. A plain two-tone FSK sender at 60 ms per bit needs 4.3 s for the same text, but falls behind from about five characters on and has no error correction. See [Sound Channel §14](../channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic).
+
+### 2.7 The live frequency readout is approximate in time (Low)
+
+- **Symptom.**
+  - The sender's **Sending now** can change tone a moment before the sound does.
+  - On Audible chords, the receiver's **Hearing now** can report fewer tones than the sender lists.
+  - The receiver occasionally shows two Silent tones for a moment at a symbol boundary.
+- **Cause.**
+  - `HardwareAcousticChannel._playWav` starts the readout clock when `AudioPlayer.play()` returns. Output buffering adds tens of milliseconds before the sound leaves the speaker, and far more over Bluetooth.
+  - `SpectrumAnalyzer` treats peaks within 4 bins (172 Hz) of a stronger one as window leakage, and neighbouring audible groups can put tones 1 bin apart.
+  - Its 23 ms window can straddle two symbols.
+- **Impact.** Display only. Decoding doesn't use either readout, and the frequencies themselves are exact on the sender and accurate to a few hertz on the receiver.
+- **Workaround.** Compare the kHz values, not their exact timing. For a clean side-by-side demo, use Silent, where one tone plays at a time.
 
 ---
 
@@ -133,8 +157,8 @@ These aren't bugs; they follow from the physics. See [Performance](../operations
 |---|---|---|
 | Light range | ≈15–40 cm | Pixels per QR module at the camera (≥ 5 needed) |
 | Light speed | ≈1.3–2.5 KB/s | Camera decode rate × bytes per sparse QR |
-| Sound speed | 10.8–35.8 B/s | Audible band, symbol length needed to beat echo |
-| Sound range | ≈0.3–2 m | Speaker power and room noise |
+| Sound speed | 10.8–35.8 B/s audible; 3.4–5.0 B/s Silent | Symbol length needed to beat echo; Silent can play only one tone at a time without an audible difference tone |
+| Sound range | ≈0.3–2 m audible; ≈0.1–0.5 m Silent | Speaker power and room noise; phones are weak at 19 kHz |
 | Vibration speed | ≈0.5 B/s | Motor spin-up/down time (tens of ms per pulse) |
 | Vibration range | Phones touching | The accelerometer must feel the other phone's motor |
 | Security | None | See [Security](../operations/SECURITY.md) |
@@ -145,9 +169,12 @@ These aren't bugs; they follow from the physics. See [Performance](../operations
 
 | # | Issue | Severity | Area |
 |---|---|---|---|
-| 2.1 | Sound sends marked delivered | Medium | App controller |
+| 2.1 | Sound sends marked delivered; Stop let a burst play out | Fixed | App controller, acoustic channel |
 | 2.2 | Sound > 8 KiB uses an undecodable path | High | App controller |
 | 2.3 | Vibration airtime > ACK timeout | Medium | Transport config |
+| 2.5 | Silent depends on each phone's 19 kHz response | Medium (by design) | Hardware |
+| 2.6 | Silent "sos" takes one 4.8 s frame | Low (by design) | Sound profiles |
+| 2.7 | Live kHz readout slightly ahead of the audio; close chord tones merge | Low | Sound UI |
 | 3.1 | Cumulative ACK handling | High (protocol path) | Transport |
 | 3.2 | Switching scenarios fail | Medium | Simulation |
 | 3.3 | Simulation Lab quirks | Low | Simulation / UI |

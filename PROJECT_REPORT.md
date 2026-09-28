@@ -2,6 +2,9 @@
 ## Project Report
 
 **Project Name:** Adaptive Physical Communication System (APCS)  
+**Author:** Harsharaj S  
+**Last updated:** 28 September 2026  
+**Repository:** [github.com/harsharaj-s/adaptive_physical_communication_system](https://github.com/harsharaj-s/adaptive_physical_communication_system)  
 **Platform:** Flutter (Android, iOS, Web/Chrome)  
 **Language:** Dart 3.11+  
 **Communication Policy:** Physical channels only — no Internet, Wi-Fi, Bluetooth, NFC, or cloud for the data path
@@ -50,8 +53,9 @@ Traditional wireless protocols require shared spectrum, pairing, and network inf
 | 4 | Build intuitive Send/Receive UI | ✅ Done |
 | 5 | Adaptive channel scoring and switching | ✅ Done (simulation) |
 | 6 | Reliable transport with ACK/retry | ✅ Done |
-| 7 | Image transfer via optical QR chunking | ✅ Done |
-| 8 | Live feedback on receive (QR progress, mic levels) | ✅ Done |
+| 7 | Image and video transfer via fountain-coded QR | ✅ Done |
+| 8 | Live feedback (QR progress, mic levels, live kHz readout on sender and receiver) | ✅ Done |
+| 9 | Inaudible near-ultrasonic sound mode (Silent band, 18.3–19.9 kHz) | ✅ Done |
 
 ---
 
@@ -126,6 +130,8 @@ All user content is packed into a binary **APCM envelope** before physical encod
 ```
 
 **Message types:** text, link, image, video, file
+
+**Overhead:** `7 + nameLen + mimeLen` bytes. Text and links leave the file name and MIME type empty, so their overhead is 7 bytes ("sos" is a 10-byte envelope) and short texts fit a single Sound frame. The byte-level layout with hex dumps is in [Data Formats](docs/architecture/DATA_FORMATS.md).
 
 **Image handling:** Photos are compressed to JPEG (max ~120 KB, 960×960) before envelope creation (`lib/core/media/image_compress.dart`).
 
@@ -261,7 +267,27 @@ be exercised by the headless harness and needs on-device verification.
 | Soft decode | Per-byte confidence (winning vs runner-up tone); failed frames retried with the weakest bytes declared erasures (GMD) | An erasure costs half the parity of an unknown error |
 | Across frames | LT fountain code (shared with the QR channel) | Rateless — lost frames never need resending |
 
-Profiles: Rugged ~11 B/s, Safe ~18 B/s, Standard ~27 B/s, Fast ~36 B/s. The receiver listens for all profiles, locks onto whichever produces a valid frame, and reopens after each message. Verified against a simulated room channel (multipath, reverb, high-frequency roll-off, clock drift, noise) in `test/acoustic_*_test.dart`.
+**Why M-ary FSK rather than ASK or PSK.** The three M-ary keying families carry data in amplitude (ASK), phase (PSK) or frequency (FSK).
+- **Amplitude** changes with distance, volume, the user's hand and room echoes, which notch single frequencies by 10–20 dB.
+- **Phase** needs a carrier reference the two phones don't share. Their sample clocks drift, multipath smears phase, and at 19 kHz moving the phone by 1 cm shifts the phase by about 200°.
+- **Frequency** survives all of these. The receiver compares energies at known bins (Goertzel, non-coherent) and picks the loudest of 16. FSK also has a constant envelope, which suits small speakers, and trades bandwidth (plentiful) for power (scarce).
+
+The price is lower spectral efficiency than PSK or QAM in a clean channel.
+
+**Two bands, six profiles.** Each tone carries 4 bits for one symbol:
+
+| Profile | Band | Tones × symbol | Raw ms/bit | Net rate |
+|---|---|---|---|---|
+| Rugged | Audible 1.2–7.2 kHz | 6 × 139 ms | 5.8 | 10.8 B/s |
+| Safe | Audible | 6 × 93 ms | 3.9 | 18.1 B/s |
+| Standard | Audible | 8 × 93 ms | 2.9 | 27.0 B/s (4.6 ms per payload bit) |
+| Fast | Audible | 8 × 70 ms | 2.2 | 35.8 B/s |
+| Silent Robust | Silent 18.3–19.9 kHz | 1 × 70 ms | 17.4 | 3.4 B/s |
+| Silent | Silent | 1 × 46 ms | 11.6 | 5.0 B/s (25 ms per payload bit) |
+
+The **Silent** band plays one tone at a time, because two simultaneous tones would create an audible difference tone in a small speaker. Tones sit two bins (86 Hz) apart to tolerate hand-held Doppler. A guard frame at the start of each symbol lets echoes decay, and a 16 kHz high-pass in front of the Silent receivers keeps voices out. The receiver listens for all six profiles at once, locks onto whichever produces a valid frame, and reopens after each message. Verified against a simulated room channel (multipath, reverb, high-frequency roll-off, clock drift, noise, plus hand wobble and talkers for the near-ultrasonic scenarios) in `test/acoustic_*_test.dart`.
+
+**Live frequency readout.** The sender's **Sending now** shows the exact tones on air, in kHz. It reads them from a `ToneTimeline` that `MtFskCodec.describe` writes alongside the waveform. The receiver's **Hearing now** shows the strongest frequencies its microphone picks up: a 1 024-point Hann-windowed FFT with parabolic peak interpolation, run at most once per 80 ms UI tick. Side by side, the two phones show the same kHz when the sound is getting through. This matters most for the Silent band, where there's nothing to hear.
 
 **Legacy modem — two-tone FSK** (`AcousticModemKind.legacyFsk`):
 - **Bit 0:** 1800 Hz tone (F0)
@@ -425,7 +451,9 @@ score = 0.35 × throughput_norm
 | Notifier | Purpose |
 |----------|---------|
 | `opticalTransmitterState` | QR TX frame index/total, scan confidence, chunk progress |
-| `acousticReceiverState` | Mic phase, input level, tone strength, decode status |
+| `acousticReceiverState` | Mic phase, input level, tone strength, Silent-band level, blocks recovered |
+| `acousticTransmitterState` | Sound playback progress, profile, estimate |
+| `acousticSpectrumState` | Tones on air (sender) and microphone spectrum (receiver) for the live kHz readout |
 | `vibrationTransmitterState` | Vibrating flag, accelerometer magnitude |
 
 ### 11.4 Event Flow — Send
@@ -443,7 +471,7 @@ User taps Send
          ELSE:
             runHardwareTransfer() → TransferManager → ReliableTransport
       → _restoreHardwareAfterTransfer()
-  → UI shows delivered/failed status
+  → UI shows sent/failed status (Light and Sound have no return path, so they never claim "delivered")
 ```
 
 ### 11.5 Event Flow — Receive
@@ -503,8 +531,9 @@ User taps Receive
 
 | Channel | Live Feedback |
 |---------|---------------|
-| Light | QR chunk progress (X/Y), scan confidence bar, camera preview |
-| Sound | Mic input level bar, tone signal bar, mic active indicator |
+| Light | SCAN/LOCK/DONE HUD, capture and decode rates, symbols collected of K, camera preview |
+| Sound | **Hearing now** kHz readout with a 0–22 kHz spectrum strip; mic input, tone signal and Silent-band bars; blocks recovered; mic active indicator |
+| Sound (sender) | **Sending now** kHz readout of the exact tones on air, playback progress and **Stop** |
 | Vibrate | Accelerometer magnitude percentage |
 
 ---
@@ -559,17 +588,27 @@ Enforced at design level — no network transports in the data path:
 
 | Test File | Coverage |
 |-----------|----------|
+| `lt_codec_test.dart`, `lt_small_k_test.dart` | LT encoder/decoder, APCF v3 frames, decoder rank against an independent GF(2) rank, overhead for K = 1…600 |
+| `fountain_qr_roundtrip_test.dart` | Real QR render → rasterise → zxing2 → LT for text, photo, video and hostile binary data |
+| `optical_density_sweep_test.dart` | Auto density and decode rates through a simulated hand-held camera |
+| `fountain_benchmark_test.dart` | 365 KB recovery with frame loss, decoder speed, profile ladder |
+| `acoustic_channel_test.dart` | All six Sound profiles through the room simulator, Silent band plan and energy below 16 kHz, near-ultrasonic scenarios |
+| `acoustic_modem_test.dart` | Full WAV → room → PCM16 loopback, rateless stop, profile auto-detection across both bands |
+| `acoustic_live_tone_test.dart` | Tone schedule matches the generated audio sample for sample; FFT finds 18 906 Hz within 8 Hz and every tone of a chord |
+| `reed_solomon_test.dart` | GF(256) errors-and-erasures decoding |
 | `protocol_test.dart` | CRC-32, packet encode/decode, corruption rejection |
-| `physical_codecs_test.dart` | FSK, Goertzel, vibration, FskStreamDecoder |
-| `qr_optical_codec_test.dart` | Single/multi-chunk QR roundtrip |
+| `physical_codecs_test.dart` | Legacy FSK, Goertzel, vibration, FskStreamDecoder |
+| `qr_optical_codec_test.dart` | Legacy single/multi-chunk QR roundtrip |
 | `image_envelope_test.dart` | JPEG → QR → reassemble → decode |
 | `adaptive_engine_test.dart` | Channel scoring, hysteresis, degradation |
 | `broadcast_mode_test.dart` | Broadcast TX without ACK, dedup |
 | `simulation_integration_test.dart` | End-to-end scenario runs |
-| `physical_only_test.dart` | Policy and channel constraints |
+| `state_machine_test.dart` | Transfer state machine transitions |
+| `sample_media_test.dart`, `gallery_saver_test.dart` | Demo samples within budget; Gallery save rules |
+| `physical_only_test.dart`, `platform_capabilities_test.dart` | Policy, channel constraints, platform flags |
 | `widget_test.dart` | Home screen smoke test |
 
-**Run:** `flutter test` (35 tests)
+**Run:** `flutter test` (22 test files, 101 tests: 100 pass, 1 optional sweep skipped). Full details in [Testing](docs/development/TESTING.md).
 
 ---
 
@@ -577,17 +616,18 @@ Enforced at design level — no network transports in the data path:
 
 | Channel | Typical Throughput | Range | Broadcast | Best Content |
 |---------|-------------------|-------|-----------|--------------|
-| Light (QR) | 400+ kbps goodput (literature); app uses chunked QR | Line of sight, 5–30 cm | ✅ Yes | Text, images, links |
-| Sound (MT-FSK fountain) | ~90–290 bps net (11–36 B/s) | Across a table; Rugged profile for noisy rooms | ✅ Yes | Text, small files |
-| Vibrate | ~5–80 bps | Contact only | ❌ No | Very short text |
+| Light (fountain QR) | ≈1.3–2.5 KB/s in practice (Auto density, 12 fps) | Line of sight, 15–25 cm | ✅ Yes | Text, images, video, files |
+| Sound, Audible (MT-FSK fountain) | ~86–286 bps net (10.8–35.8 B/s) | Across a table; Rugged profile for noisy rooms | ✅ Yes | Text, small files |
+| Sound, Silent (18.3–19.9 kHz) | ~27–40 bps net (3.4–5.0 B/s) | Within about half a metre; inaudible to most adults | ✅ Yes | Short texts |
+| Vibrate | ≈4–5 bps raw (≈0.5 B/s; 80/180 ms pulses + 60 ms gaps) | Contact only | ❌ No | Very short text |
 
 ---
 
 ## 18. Limitations
 
 1. **No internet fallback** — devices must be physically near each other
-2. **Image size** — large photos require many QR frames (30–60+ chunks)
-3. **Sound sensitivity** — ambient noise and device speaker quality affect reliability
+2. **Image size** — photos are compressed to ≤ 120 KB, and larger files need more fountain QR frames (a 40 KB photo takes about 20 s on Light)
+3. **Sound sensitivity** — ambient noise and device speaker quality affect reliability; the Silent band works only on phones whose speaker and microphone pass 19 kHz
 4. **Vibration** — requires firm physical contact; very low bit rate
 5. **Web platform** — no vibration channel; camera/mic permissions vary by browser
 6. **Security** — physical signals can be intercepted by nearby observers/listeners
@@ -599,10 +639,10 @@ Enforced at design level — no network transports in the data path:
 
 - Machine learning-based channel prediction (Phase 9)
 - Adaptive switching in live hardware Send/Receive
-- Near-ultrasonic (17–22 kHz) inaudible acoustic mode
+- OFDM for Sound (more tones with a cyclic prefix against echo) for 2–3× the rate in quiet rooms; the near-ultrasonic Silent band is now shipped
 - Improved QR throughput with custom symbology
 - End-to-end encryption over physical channels
-- iOS vibration/accelerometer optimization
+- iOS vibration/accelerometer optimisation
 
 ---
 
@@ -637,7 +677,8 @@ lib/
 │   │   └── chat_payload_codec.dart    # APCM envelope encode/decode
 │   ├── channels/
 │   │   ├── comm_channel.dart          # Channel interface + simulated channels
-│   │   ├── hardware_channels.dart     # Optical + Acoustic hardware
+│   │   ├── hardware_channels.dart     # Acoustic hardware (re-exports the others)
+│   │   ├── hardware_optical_channel.dart # Camera, zoom/focus/exposure, fountain QR
 │   │   └── vibration_channel.dart     # Vibration hardware
 │   ├── engine/
 │   │   └── adaptive_decision_engine.dart
@@ -645,16 +686,24 @@ lib/
 │   │   ├── channel_manager.dart
 │   │   ├── transfer_manager.dart
 │   │   └── transfer_state_machine.dart
-│   ├── media/
-│   │   └── image_compress.dart        # JPEG compression for transfer
+│   ├── media/                         # image_compress, sample_media, gallery_saver
 │   ├── physical/
+│   │   ├── fountain/                  # LT codec, APCF v3 frames, QR bitmap, FountainQrModem
+│   │   ├── acoustic/                  # MT-FSK codec, frame sync, Reed-Solomon, frames,
+│   │   │                              # fountain modem, profiles, high-pass filter,
+│   │   │                              # tone timeline, spectrum analyzer
+│   │   ├── csk/                       # Legacy colour-shift-keying modem
+│   │   ├── optical_tx_profile.dart    # Light profiles, Auto density, metrics
+│   │   ├── qr_decode_worker.dart      # Background decode isolate
 │   │   ├── hardware_phy_config.dart   # Timing constants
-│   │   ├── physical_codecs.dart       # FSK, Goertzel, VibrationBitCodec
-│   │   ├── qr_optical_codec.dart      # QR chunk encode/reassemble
-│   │   └── qr_frame_decoder.dart      # Camera → QR string
+│   │   ├── physical_codecs.dart       # Legacy FSK, Goertzel, VibrationBitCodec, WAV
+│   │   ├── qr_optical_codec.dart      # Legacy QR chunk encode/reassemble
+│   │   └── qr_frame_decoder.dart      # Camera → QR bytes (zxing2 sequence)
 │   ├── platform/
-│   │   ├── platform_capabilities.dart # Physical-only policy
+│   │   ├── platform_capabilities.dart # Physical-only policy, optical state
 │   │   ├── acoustic_receiver_state.dart
+│   │   ├── acoustic_transmitter_state.dart
+│   │   ├── acoustic_spectrum_state.dart # Live kHz readout (sender and receiver)
 │   │   └── vibration_transmitter_state.dart
 │   ├── protocol/
 │   │   └── packet_codec.dart          # 24-byte header + CRC-32
@@ -664,17 +713,22 @@ lib/
 │   └── types/types.dart               # Enums, configs, metrics
 └── ui/
     ├── screens/                       # Home, Send, Receive, Dev tools
-    └── widgets/                       # QR overlay, camera preview, content view
+    └── widgets/                       # QR overlay, camera preview, HUDs, live tone meter, content view
 ```
 
 ## Appendix B: Key Algorithms Summary
 
 | Algorithm | Used In | Purpose |
 |-----------|---------|---------|
-| **QR chunking + Base64URL** | Light TX/RX | Split large payloads into scannable frames |
-| **zxing2 QR decode** | Light RX | Extract chunk string from camera frame |
-| **FSK (1800/3200 Hz)** | Sound TX/RX | Encode bits as frequency tones |
-| **Goertzel detector** | Sound RX | Detect F0/F1 energy per symbol |
+| **LT fountain code (GF(2), incremental Gauss–Jordan)** | Light and Sound | Rateless: any ≈K frames rebuild the message, lost frames never resent |
+| **Raw-byte fountain QR (APCF v3) + Auto density** | Light TX | Sparse QR versions 8–12 that a hand-held camera reads reliably |
+| **zxing2 QR decode (GlobalHistogram → pureBarcode → Hybrid)** | Light RX | Extract the APCF frame from a camera frame, in a background isolate |
+| **16-ary multi-tone FSK** | Sound TX/RX | 4 bits per tone; 6–8 tones at once (Audible) or one tone (Silent, 18.3–19.9 kHz) |
+| **Goertzel detector (soft decisions)** | Sound RX | Tone energy per bin, plus per-byte confidence |
+| **Reed-Solomon GF(256) + GMD erasures** | Sound RX | Repair damaged bytes in each frame |
+| **4th-order Butterworth high-pass (16 kHz)** | Sound RX (Silent) | Keep voices out of the near-ultrasonic receiver |
+| **Hann-windowed FFT + parabolic peak interpolation** | Sound RX UI | Live **Hearing now** frequency readout |
+| **FSK (1800/3200 Hz), QR chunking + Base64URL** | Legacy modems | Kept for reuse, not selectable in the main UI |
 | **Pulse-width modulation** | Vibrate TX/RX | Encode bits as short/long vibration pulses |
 | **CRC-32** | Protocol | Packet integrity verification |
 | **Sliding window + ACK/NACK** | Transport | Reliable delivery with retry |

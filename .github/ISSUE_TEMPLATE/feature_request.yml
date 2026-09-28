@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an idea or improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the [Roadmap](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/project/ROADMAP.md) first; your idea may already be planned.
+
+        The app sends data over light, sound and vibration only. Features that need Wi-Fi, Bluetooth, NFC, mobile data or a server in the data path are out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like the app to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why you prefer this one.
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - label: This would change a wire format (Light frame, Sound frame, envelope or packet), so both phones would need the new build.

@@ -2,6 +2,8 @@
 
 How to make changes to the project safely: the workflow, the code conventions the existing code follows, how to add a feature without breaking two-phone compatibility, and how to keep these documents correct.
 
+This is the detailed developer guide. For how to report bugs, share device test results and open a pull request, see [`CONTRIBUTING.md`](../../CONTRIBUTING.md) in the repository root. Everyone taking part follows the [Code of Conduct](../../CODE_OF_CONDUCT.md).
+
 Back to the [documentation index](../README.md).
 
 ---
@@ -106,7 +108,7 @@ Two phones must agree byte-for-byte. Before changing any frame, envelope or pack
 2. Make the receiver **reject** unknown versions rather than guess (as APCF v3 rejects v2).
 3. Update [Data Formats](../architecture/DATA_FORMATS.md) with a regenerated hex dump from the real codec.
 4. Add a round-trip test and, for PHY changes, a simulator test.
-5. Add a [Changelog](../project/CHANGELOG.md) entry under a new milestone and state the compatibility break.
+5. Add a [Changelog](../project/CHANGELOG.md) entry under **Unreleased** with a **Compatibility** note that states the break. After the first tagged release, a break like this means a new major version.
 
 ---
 
@@ -147,11 +149,44 @@ See [Testing](TESTING.md).
 
 ## 9. Documentation
 
+The documentation follows the [Google developer documentation style guide](https://developers.google.com/style) for wording and the [Diátaxis](https://diataxis.fr/) framework for structure.
+
+### Keeping it correct
+
 - **The code wins.** If a document disagrees with the code, fix the document in the same pull request.
-- Every doc starts with a title, a one-paragraph intro and "Back to the [documentation index](../README.md)."
-- Use numbered sections, tables for enumerable facts, relative links, and backticks for file and class names.
+- **Say it once.** Each fact has one home document; other pages summarise it in a sentence and link there. Duplicated detail drifts out of date.
 - Regenerate hex dumps and example numbers from the real code (a throwaway script under `tool/`, run with `dart run`, then deleted), never by hand.
+- When a behaviour changes, update the [Changelog](../project/CHANGELOG.md) under **Unreleased**, using the Keep a Changelog headings `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`.
+
+### Choosing where content goes
+
+Decide what the reader needs, then put the content in the matching kind of document. The [documentation index](../README.md#documentation-by-type) lists which documents are which.
+
+| Kind | The reader wants to… | Example |
+|---|---|---|
+| **Tutorial** | Learn by doing, step by step | [Installation](../getting-started/INSTALLATION.md) |
+| **How-to guide** | Get a specific job done | [Troubleshooting](../operations/TROUBLESHOOTING.md) |
+| **Reference** | Look up an exact fact | [API Reference](API_REFERENCE.md), [Data Formats](../architecture/DATA_FORMATS.md) |
+| **Explanation** | Understand why | [Design Decisions](../architecture/DESIGN_DECISIONS.md) |
+
+### Document layout
+
+- Every document starts with a title, a one-paragraph intro that says what it covers, and "Back to the [documentation index](../README.md)."
+- Documents with more than a few sections have a numbered **Contents** list, and the sections are numbered to match.
 - New documents must be added to the map in [`docs/README.md`](../README.md).
+
+### Style
+
+- **Voice:** address the reader as "you", use the active voice and the present tense, and keep sentences short. Write for a global audience: avoid idioms and slang.
+- **Spelling:** British English in prose ("colour", "behaviour", "licence" as a noun). Code identifiers keep their own spelling (`Color`, `initialize`, `flutter analyze`).
+- **Headings:** document titles use title case and are reused verbatim as link text ("see [User Guide](../getting-started/USER_GUIDE.md)"). Section headings use sentence case. Don't skip heading levels.
+- **Formatting:** `code font` for file names, class names, commands and values the reader types; **bold** for UI labels the reader taps ("tap **Send**"); *italics* sparingly, for terms being introduced.
+- **Links:** relative links between repository files, with descriptive link text; never "click here".
+- **Numbers and units:** digits with units and a space (`43.066 Hz`, `18–20 kHz`, `≈0.5 B/s`); an en dash for ranges. Use KiB and MiB when an exact binary limit is meant (the 8 KiB Sound limit, the 120 KiB photo cap), and KB for approximate sizes.
+- **Dates:** ISO 8601 (`2026-09-28`) in the changelog, or unambiguous day-month-year ("28 Sep 2026") in prose.
+- **Tables** for enumerable facts, with any explanation in the surrounding text rather than in long cells.
+- **Images** need alt text that describes what the image shows. Store them under `docs/images/`.
+- **Notes** use a blockquote starting with a bold label, for example `> **Note:**` or `> **Warning:**`.
 
 ---
 
@@ -159,5 +194,6 @@ See [Testing](TESTING.md).
 
 - **Commits:** a short imperative subject ("Add Rugged sound profile"), with an optional body explaining *why*.
 - **One topic per pull request**; keep refactors separate from behaviour changes.
-- **The PR description** says what changed, why, how it was tested (tests + devices), and any compatibility impact.
+- **The PR description** says what changed, why, how it was tested (tests + devices), and any compatibility impact. The [pull request template](../../.github/PULL_REQUEST_TEMPLATE.md) prompts for each of these.
+- **Issues** use the forms in `.github/ISSUE_TEMPLATE/`: bug report, device test report and feature request. Security problems go through the [security policy](../../SECURITY.md), never a public issue.
 - Never commit secrets: `android/key.properties`, keystores, `.env` files.

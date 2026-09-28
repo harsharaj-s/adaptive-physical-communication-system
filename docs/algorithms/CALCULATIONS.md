@@ -34,9 +34,12 @@ overhead = 7 + len(name) + len(mime)
 
 | Content | Name | MIME | Data | Envelope |
 |---|---|---|---|---|
-| Text "sos" | `message.txt` (11) | `text/plain` (10) | 3 | 7 + 11 + 10 + 3 = **31 B** |
-| Text "Hello from sound!" | 11 | 10 | 17 | **45 B** |
+| Text "sos" | empty (0) | empty (0) | 3 | 7 + 3 = **10 B** |
+| Text "Hello from sound!" | 0 | 0 | 17 | **24 B** |
+| Text, 100 ASCII characters | 0 | 0 | 100 | **107 B** |
 | JPEG 5 100 B | e.g. `photo.jpg` (9) | `image/jpeg` (10) | 5 100 | **5 126 B** |
+
+Text and links carry no name or MIME type: the type byte already identifies them, and the receiver shows them inline. `ChatPayloadCodec.overheadBytes()` computes the overhead without building an envelope.
 
 Details: [Data Formats §2](../architecture/DATA_FORMATS.md).
 
@@ -93,7 +96,7 @@ ETA   = ceil( (K + 2) / (fps × yield) )
 
 | Payload | K | fps × yield | ETA |
 |---|---|---|---|
-| 31 B | 1 | 8.4 | ⌈3/8.4⌉ = 1 s |
+| 10 B | 1 | 8.4 | ⌈3/8.4⌉ = 1 s |
 | 5 130 B | 33 | 8.4 | ⌈35/8.4⌉ = 5 s |
 | 10 300 B | 43 | 7.8 | ⌈45/7.8⌉ = 6 s |
 | 80 055 B | 243 | 6.6 | ⌈245/6.6⌉ = 38 s |
@@ -189,8 +192,20 @@ amplitude    = 0.98 / tones                       peak never exceeds 0.98
 | Safe | 6 | 4 | 92.9 ms | **258 b/s** |
 | Standard | 8 | 4 | 92.9 ms | **345 b/s** |
 | Fast | 8 | 3 | 69.7 ms | **459 b/s** |
+| Silent Robust | 1 | 3 | 69.7 ms | **57 b/s** |
+| Silent | 1 | 2 | 46.4 ms | 4 bits / 0.0464 s = **86 b/s** |
 
 Example: group 2, nibble 0xA → bin 40 + 32 + 10 = 82 → 82 × 43.066 = **3 531 Hz**.
+
+**Silent band.** Tones use every second bin from 431, and the sync tones are separate bins below the data tones:
+
+```
+tone(v)      = (431 + 2v) × 43.066 Hz           v = 0–15 → 18 562 … 19 854 Hz
+sync tones   = bin 424 (18 260 Hz), then bin 427 (18 389 Hz), one per marker half
+tone spacing = 2 × 43.066 = 86.1 Hz              Doppler at 0.3 m/s ≈ 17 Hz
+amplitude    = 0.8                                 one tone at a time
+guard        = first 1 024 samples of each symbol ignored by the demodulator
+```
 
 ---
 
@@ -212,6 +227,10 @@ net rate    = L / frameTime
 | Safe | 48 | 24 | 83 | 28 | 116 736 | 2.647 s | 18.1 B/s |
 | Standard | 64 | 24 | 99 | 25 | 104 448 | 2.368 s | 27.0 B/s |
 | Fast | 64 | 24 | 99 | 25 | 78 848 | 1.788 s | 35.8 B/s |
+| Silent Robust | 24 | 16 | 51 | 102 | 315 392 | 7.152 s | 3.4 B/s |
+| Silent | 24 | 16 | 51 | 102 | 210 944 | 4.783 s | 5.0 B/s |
+
+With G = 1 a symbol carries half a byte, so `dataSymbols = ceil(2 × codeword / G)` = 102.
 
 ### 6.2 Transfer
 
@@ -225,7 +244,9 @@ time ≈ expectedSymbols × frameTime  (+ 0.12 s per burst)
 
 | Envelope | Profile | K | Frames | Time |
 |---|---|---|---|---|
-| 31 B | Standard | 1 | ⌈1.25⌉ + 2 = 4 | 4 × 2.368 = **9.5 s** |
+| 10 B | Standard | 1 | ⌈1.25⌉ + 2 = 4 | 4 × 2.368 = **9.5 s** |
+| 10 B | Silent | 1 | 4 | 4 × 4.783 = **19.1 s** |
+| 107 B | Silent | ⌈107/24⌉ = 5 | ⌈6.25⌉ + 2 = 9 | 9 × 4.783 = **43 s** |
 | 500 B | Rugged | 16 | 20 + 2 = 22 | 22 × 2.972 = **65 s** |
 | 500 B | Fast | 8 | 10 + 2 = 12 | 12 × 1.788 = **21 s** |
 | 2.1 KB | Standard | 33 | ⌈41.25⌉ + 2 = 44 | 44 × 2.368 = **1.7 min** |
@@ -265,6 +286,8 @@ refine span   = min(symbolSamples / 8, 512)
 search step   = 64 samples
 ```
 
+Silent markers play bin 424 in the first half and bin 427 in the second. Each half then scores `1 · P / E` for its single tone, which is also 512 when aligned, so the same threshold works. Silent syncs high-pass the audio at 16 kHz before scoring, otherwise speech energy in E buries the marker.
+
 Processing gain of a Goertzel bin integrated over one symbol of L = F × 1 024 samples (a coherent tone gains L²/2 in power while white noise gains L):
 
 ```
@@ -276,6 +299,10 @@ gain = 10 log10(L / 2)
 | Fast | 3 072 | 31.9 dB |
 | Standard / Safe | 4 096 | 33.1 dB |
 | Rugged | 6 144 | 34.9 dB |
+| Silent (guard excluded) | 1 024 | 27.1 dB |
+| Silent Robust (guard excluded) | 2 048 | 30.1 dB |
+
+Silent's shorter window is offset by level: one tone at 0.8 against Standard's 0.1225 per tone is 20·log10(0.8 / 0.1225) ≈ **16.3 dB** more per tone.
 
 Derivation: [Signal Processing](SIGNAL_PROCESSING.md).
 
@@ -294,8 +321,8 @@ reject       = pulses < 25 ms
 
 | Message | On-air bytes | Bits | Time |
 |---|---|---|---|
-| "hi" | 58 | 472 | ≈113 s |
-| "hello" | 61 | 496 | ≈119 s |
+| "hi" | 9 + 28 = 37 | 304 | ≈73 s |
+| "hello" | 12 + 28 = 40 | 328 | ≈79 s |
 | Full 48-byte payload | 76 | 616 | ≈148 s |
 
 ---
@@ -384,8 +411,8 @@ Example: 200 KB, 30 s, 12 kbps audio → 204 800 × 8 / 1000 / 30 × 0.96 = 52.4
 
 | | Light | Sound | Vibration |
 |---|---|---|---|
-| Carrier | QR codes at 8–12 fps | 1.2–7.2 kHz tones | 80/180 ms buzzes |
-| Net rate | ≈1.3–2.5 KB/s | 10.8–35.8 B/s | ≈0.5 B/s |
+| Carrier | QR codes at 8–12 fps | 1.2–7.2 kHz tones, or 18.3–19.9 kHz (Silent) | 80/180 ms buzzes |
+| Net rate | ≈1.3–2.5 KB/s | 10.8–35.8 B/s audible; 3.4–5.0 B/s Silent | ≈0.5 B/s |
 | Ratio to vibration | ≈2 500–4 800× | ≈20–70× | 1× |
 | Integrity | CRC-32 + QR's RS | RS + CRC-16 + GMD | Packet CRC-32 |
 | Loss recovery | LT fountain | LT fountain | ACK/NACK retransmit |

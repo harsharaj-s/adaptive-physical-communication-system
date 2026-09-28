@@ -22,7 +22,6 @@ Back to the [documentation index](../README.md).
 |---|---|---|---|
 | Per-sequence ACK bitmap in `ReliableTransport` | Known Issue 3.1, 3.2 | Small | Advance `lastAcked` only over a contiguous run; keep NACK/retransmission requests |
 | Block Sound envelopes > 8 KiB in the compose/transmit UI | 2.2 | Small | Show "Too large for Sound: use Light" with the estimated time |
-| Mark Sound sends as `sent`, not `delivered` | 2.1 | Trivial | One line in `AppController` |
 | Skip re-encoding JPEGs that already fit | 4.1 | Small | Check the size and dimensions first; compress once, in one place |
 | Send text *and* attachment | 4.2 | Small | Two envelopes, or a caption field in APCM |
 | Clamp envelope names to 255 bytes | 4.4 | Trivial | In `ChatPayloadCodec.encode` |
@@ -50,7 +49,7 @@ Back to the [documentation index](../README.md).
 | Item | Description |
 |---|---|
 | **Two-way Light + Sound** | Use Sound as a low-rate back-channel for Light: the receiver sends "done" or its rank so the sender stops automatically |
-| **Near-ultrasonic Sound** | Move tones to 17–20 kHz for silent transfers on phones whose speakers and mics reach it; needs a per-device capability test |
+| **Silent-band capability check** | The Silent band shipped ([ADR-20](../architecture/DESIGN_DECISIONS.md#adr-20-a-silent-near-ultrasonic-band-for-sound)). Next: a one-tap test where each phone plays a 19 kHz tone and the other reports its *Silent band* level, so the app can suggest Audible before a transfer fails |
 | **Authenticated encryption** | Optional passphrase: derive a key with Argon2id, encrypt the envelope with AES-GCM or ChaCha20-Poly1305. See [Security](../operations/SECURITY.md) |
 | **Multi-file bundles** | Send several files in one fountain session with a small manifest |
 | **Desktop builds** | Windows/macOS/Linux as Light senders on a big screen for classroom broadcast |

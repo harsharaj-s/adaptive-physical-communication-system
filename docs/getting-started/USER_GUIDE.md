@@ -30,12 +30,12 @@ You need **two phones with the app installed**. One phone is the **sender** and 
 | Channel | How the message travels | Distance | Good for |
 |---|---|---|---|
 | **Light** | The sender's screen shows a fast-changing QR code. The receiver points its camera at it. | 15–25 cm | Photos, videos, longer text |
-| **Sound** | The sender's speaker plays musical-sounding tones. The receiver listens with its microphone. | Across a table | Short text, links |
+| **Sound** | The sender's speaker plays musical-sounding tones, or with **Silent** tones too high for most people to hear. The receiver listens with its microphone. | Across a table (Silent: within arm's reach) | Short text, links |
 | **Vibrate** | The sender's phone buzzes in a pattern. The receiver, pressed against it, feels the buzzes. | Phones touching | A word or two |
 
 Nothing leaves the two phones. Anyone nearby could see the QR code or hear the tones, so do not send secrets.
 
-> Screenshot: Two phones side by side, one showing a QR code and the other showing the camera view (add image here)
+> **Note:** The screenshots in this guide were taken from the web build of the app in a phone-sized browser window. On a phone, the screens look the same, with two differences: the Home screen's bottom line names your phone's channels, and the **Choose transmission mode** panel also offers **Vibrate**.
 
 ---
 
@@ -79,7 +79,8 @@ If you tapped **Don't allow** by mistake, open your phone's **Settings → Apps 
 
 When you open the app you see the Home screen.
 
-> Screenshot: Home screen with the Send and Receive buttons (add image here)
+<p align="center"><img src="../images/home.png" alt="Home screen: the app logo, the title Adaptive Physical Communication, the line Send messages without internet, and two large buttons, Send and Receive" width="260"></p>
+<p align="center"><em>Figure 1. The Home screen.</em></p>
 
 From top to bottom it shows:
 
@@ -101,7 +102,8 @@ From top to bottom it shows:
 
 Tap **Send** on the Home screen. The **Compose message** screen opens.
 
-> Screenshot: Compose message screen with the text box and the Attach chips (add image here)
+<p align="center"><img src="../images/compose.png" alt="Compose message screen: an empty text box, the Attach chips Image, Video, Link and Demo samples, an attached file cat_sketch_2kb.jpg of 2.0 KB with a remove button, and the Continue to send button at the bottom" width="260"></p>
+<p align="center"><em>Figure 2. The Compose message screen with a demo photo attached.</em></p>
 
 ### 5.1 Sending text
 
@@ -154,7 +156,8 @@ The app contains ready-made photos and videos, so you can try it without copying
 4. Under each title you see its size and type, for example `9.8 KB · JPG` or `78.1 KB · WEBM`.
 5. Tap a row to attach it, then tap **Continue to send**.
 
-> Screenshot: Demo samples panel showing Photos and Videos with sound (add image here)
+<p align="center"><img src="../images/demo-samples.png" alt="Demo samples panel: the heading Demo samples, the line Built-in test files, and a Photos list with thumbnails, for example Cat sketch 2.0 KB JPG and Future city 5.0 KB JPG" width="260"></p>
+<p align="center"><em>Figure 3. The Demo samples panel. Scroll down for Videos with sound.</em></p>
 
 **Good first choices:** a 5 KB photo over Light finishes in a few seconds. **Speed of light** (about 78 KB) takes about 40 seconds over Light. The iPhone cannot play or save the **Speed of light** video because it is in WebM format; all other videos are MP4 and work everywhere.
 
@@ -164,7 +167,8 @@ The app contains ready-made photos and videos, so you can try it without copying
 
 After you tap **Continue to send**, a panel titled **Choose transmission mode** slides up, with the line **How should this message travel to nearby devices?**
 
-> Screenshot: Choose transmission mode panel (add image here)
+<p align="center"><img src="../images/choose-mode.png" alt="Choose transmission mode panel: the question How should this message travel to nearby devices, with a Light option (Animated QR, hold 15 to 25 cm) and a Sound option (Speaker tones, text and small files)" width="260"></p>
+<p align="center"><em>Figure 4. The Choose transmission mode panel (web build; phones also show Vibrate).</em></p>
 
 | Option | Description shown in the app |
 |---|---|
@@ -200,7 +204,8 @@ The screen shows a large icon and a heading:
 
 Below it is a card with a preview of your message (the text, or the file name).
 
-> Screenshot: Send via Light ready screen with QR density buttons (add image here)
+<p align="center"><img src="../images/send-light-ready.png" alt="Send via Light screen: Ready to transmit via QR, a card for cat_sketch_2kb.jpg reading 2.0 KB, Fountain QR, 160 B per frame, about 2 s, a Tips for a smooth transfer card, the QR density buttons Auto, Safe, Standard and Fast with Auto selected, and the Show QR and send button" width="260"></p>
+<p align="center"><em>Figure 5. The Send via Light screen, ready to send.</em></p>
 
 #### Light options
 
@@ -230,24 +235,40 @@ When you change the density, the size, bytes-per-frame and time estimate in the 
 
 #### Sound options
 
-A card titled **Tips for a smooth transfer** lists:
+A card titled **Tips for a smooth transfer** lists, for **Audible**:
 
 - • Volume up, speaker facing the receiver
 - • Works across a table; quieter is faster
 - • Lost frames are OK — fountain recovers
 
-Under **Sound speed** are four buttons. Each shows its speed in bytes per second. The app starts on **Standard**, and remembers your choice until you close the app.
+and for **Silent**:
 
-| Button | Best for (hint shown in the app) |
-|---|---|
-| **Fast · 36 B/s** | Quiet room, phones touching |
-| **Standard · 27 B/s** | Normal room, across a table |
-| **Safe · 18 B/s** | Background noise or chatter |
-| **Rugged · 11 B/s** | Loud room, phones metres apart |
+- • Silent: 18–20 kHz, you will not hear it
+- • Media volume to max, speaker facing the mic
+- • 10–50 cm apart; hold both phones still
+- • Nothing arriving? Some phones cannot play or hear 18 kHz — switch to Audible
 
-Under the buttons the app repeats the hint for the selected speed, followed by *"The receiving phone detects the speed by itself."* You do **not** need to choose anything on the receiving phone.
+**Sound band** has two buttons:
 
-Below that is a line such as `17 B · ~10s`: the size of your message in bytes and roughly how long it takes to send at the chosen speed.
+- **Audible** plays chirpy chords you can hear. It is the fastest and works on every phone.
+- **Silent** plays very high tones (18–20 kHz) that most adults cannot hear. It is slower, needs the phones closer together, and only works if both phones' speaker and microphone can handle such high sounds. Most recent phones can; try it before a demo.
+
+Under **Speed** are the buttons for the chosen band. Each shows its speed in bytes per second. The app starts on **Standard**; switching band picks **Standard** or **Silent**. Your choice is remembered until you close the app.
+
+| Band | Button | Best for (hint shown in the app) |
+|---|---|---|
+| Audible | **Fast · 36 B/s** | Quiet room, phones touching |
+| Audible | **Standard · 27 B/s** | Normal room, across a table |
+| Audible | **Safe · 18 B/s** | Background noise or chatter |
+| Audible | **Rugged · 11 B/s** | Loud room, phones metres apart |
+| Silent | **Silent · 5.0 B/s** | Inaudible 18–20 kHz, phones within arm's reach |
+| Silent | **Silent Robust · 3.4 B/s** | Inaudible, weak speaker or a loud crowd |
+
+Under the buttons the app repeats the hint for the selected speed, followed by *"The receiving phone detects the band and speed by itself."* You do **not** need to choose anything on the receiving phone.
+
+Next comes **FRAME TO BE SENT**: a coloured bar showing how each sound frame's time is spent (**Marker**, the start signal; **Header**; **Message**, your data; **CRC**, a check; and **Parity**, the repair data that lets a damaged frame be fixed). Under it are the **TONES** range in kHz, the length of one **FRAME** in seconds, and how many **FRAMES** your message needs at minimum. A one-line text fits in one frame: 2.4 s on Standard, 4.8 s on Silent.
+
+Below that is a line such as `24 B on air · ~10s typical`: the size of your message as sent, and roughly how long it takes at the chosen speed in a normal room. When every frame is heard cleanly it is quicker, down to the time shown under **FRAMES**.
 
 #### Vibrate options
 
@@ -267,7 +288,8 @@ Tap the big button at the bottom:
 
 The whole screen turns white and shows a large black-and-white QR code that changes about 12 times per second. Your screen brightness goes to maximum automatically and returns to normal afterwards.
 
-> Screenshot: Light sending screen with the QR code and the Stop button (add image here)
+<p align="center"><img src="../images/send-light-streaming.png" alt="Light sending screen: a white screen with a large black-and-white QR code, the line Streaming, tap Stop when the receiver shows DONE, the details Auto, 160 B per frame, 3.3 KB, K=21, frame 38, and a Stop button at the bottom" width="260"></p>
+<p align="center"><em>Figure 6. Sending over Light. The QR code changes about 12 times per second. The 2.0 KB photo is 3.3 KB on air because the app re-encodes photos before sending (see <a href="../project/KNOWN_ISSUES.md#41-photos-are-re-compressed-and-grow-medium">Known Issues §4.1</a>).</em></p>
 
 - At the top it says **Streaming… tap Stop when the receiver shows DONE**.
 - Under that is a small grey line such as `Auto · 330 B/frame · 80 KB · K=243 · frame 57`. It shows the density, the bytes per picture, the file size, the number of pieces the file was cut into (**K**) and which picture is being shown now. You can ignore it.
@@ -279,22 +301,24 @@ The QR code **never stops on its own** (except after a 10-minute safety limit), 
 
 The screen shows a pulsing sound icon and **Playing acoustic tones…**, with the reminder *"Volume up, speaker facing the other phone. Keep playing until the other device says it has the message."*
 
+Below the progress card, **Sending now** shows the frequency being played at this moment, in kHz, and a small 0–22 kHz strip with a line for each tone. Audible sends play several tones at once (for example *1.94–6.80 kHz · 8 tones at once*). Silent sends play one tone between 18.3 and 19.9 kHz.
+
 A card appears with:
 
 - **Playing … B · Standard** (the size and the speed you chose),
 - a progress bar,
-- *"Turn the volume up and point the speaker at the other phone. About …s if it is heard cleanly."*
+- *"Turn the volume up and point the speaker at the other phone. About …s if it is heard cleanly."* On **Silent** it reads *"Playing 18–20 kHz tones — you will not hear them…"*, and the icon changes to a crossed-out ear. Hearing nothing is normal; you may notice a faint tick at the start and end of each burst on some phones.
 - a **Stop** button on the right.
 
-The progress bar fills when the usual amount of sound has been played. Sound keeps playing after that, in case the receiver missed some parts, until you tap **Stop** or a built-in limit is reached. When the receiver shows the message, tap **Stop** on this card.
+The progress bar fills when the usual amount of sound has been played. Sound keeps playing after that, in case the receiver missed some parts, until you tap **Stop** or a built-in limit is reached. When the receiver shows the message, tap **Stop** on this card. The tones stop straight away.
 
-At the very bottom there is also a **Cancel transmission** button. It leaves the send screen. **Tap Stop on the card first** if you want the tones to stop straight away (see [section 12](#12-what-to-do-if)).
+At the very bottom there is also a **Cancel transmission** button. It stops the tones and leaves the send screen, as do the **✕** button and the back button.
 
 #### While sending over Vibrate
 
 The screen shows a pulsing vibration icon with **Vibrating…** (or **Transmitting…** between buzzes) and *"Hold phones together — vibration is contact-only (1:1)"*. Keep the phones pressed together until it finishes. **Cancel transmission** at the bottom stops it.
 
-Vibration is very slow: even a two-letter message takes about two minutes.
+Vibration is very slow: even a two-letter message takes more than a minute.
 
 ### 7.3 When sending ends
 
@@ -332,8 +356,6 @@ Leaving the Receive screen (the back arrow) stops the camera, microphone or moti
 At the top of the screen is a coloured status banner that tells you what the phone is doing. When a message arrives, the banner turns green and reads **Message received — still listening**.
 
 ### 8.1 Receiving over Light
-
-> Screenshot: Receive via Light screen with camera view, corner brackets, zoom chips and HUD (add image here)
 
 The screen shows the camera view with four white **corner brackets** marking a square. Only the part inside the square is read.
 
@@ -391,7 +413,8 @@ When the file is complete, a green **Transfer complete** card may briefly show t
 
 ### 8.2 Receiving over Sound
 
-> Screenshot: Receive via Sound screen with Mic input and Tone signal meters (add image here)
+<p align="center"><img src="../images/receive-sound.png" alt="Receive via Sound screen: a blue banner Mic live, listening for tones, an ear icon, the status Mic live, waiting for audio, a Hearing now card showing No clear tone above a 0 to 20 kHz spectrum strip with the Audible and Silent bands shaded, the meters Mic input, Tone signal and Silent band 18 to 20 kHz at 0 percent, and the line Microphone streaming" width="260"></p>
+<p align="center"><em>Figure 7. Receiving over Sound, listening before the sender starts.</em></p>
 
 1. Allow the microphone if asked.
 2. Place the receiving phone so its microphone (usually at the bottom edge) faces the sender's speaker, across a table at most. A quiet room is faster.
@@ -423,14 +446,14 @@ The screen shows a pulsing ear icon (blue when listening, amber when it hears to
 
 - **Mic input** (percentage): how loud the microphone hears the room. If it stays at 0%, the microphone is not working.
 - **Tone signal** (percentage): how strongly the sender's tones are heard. It turns amber above about 12%. While a message is arriving, it rises with progress.
+- **Silent band 18–20 kHz** (percentage): how much very high sound the microphone hears. It turns teal above about 30%. When the sender uses **Silent**, this is the meter to watch: **Mic input** barely notices such high tones, and **Tone signal** simply follows this one. If it stays near 0% while a Silent sender plays, one of the phones can't handle those frequencies: ask the sender to switch to **Audible**.
+- **Hearing now**: the strongest frequency the microphone picks up, in kHz, with its level and a 0–22 kHz spectrum strip. When the sound is getting through, it matches the sender's **Sending now**. It shows **—** when nothing stands out from the background noise.
 - A line reading **Microphone streaming** (green) or **Microphone not active** (red).
 - If the microphone is not running, an **Enable microphone** button appears. Tap it to ask for permission again and restart listening.
 
 The status banner at the top shows messages such as **Mic live — listening for tones** (*Hold within ~30 cm of sender in a quiet room*), **Tones detected — decoding…** (*Hold phones close until message appears*), **Microphone blocked** (*Tap Enable microphone below*) and **Sound message decoded**.
 
 ### 8.3 Receiving over Vibrate
-
-> Screenshot: Receive via Vibrate screen with the Signal percentage (add image here)
 
 1. Choose **Vibrate** on **both** phones. Open Receive on this phone **before** the sender taps **Start vibration**.
 2. Place the phones **touching**, for example back to back or one on top of the other on a table, and press them together firmly.
@@ -442,8 +465,6 @@ The screen shows **Detecting vibration…** and *"Press phones together firmly. 
 ## 9. The received message card
 
 When a message arrives it replaces the camera view or meters and fills the screen. The card's header shows the type (**Text message**, **Link**, **Image**, **Video** or **File**) and the size.
-
-> Screenshot: Received photo card with the Save to Gallery button (add image here)
 
 | Type | What you see and can do |
 |---|---|
@@ -500,6 +521,7 @@ If a message you already received appears as soon as you open the Receive screen
 - Turn the sender's volume all the way up.
 - Point the sender's speaker at the receiver's microphone; keep them close.
 - Quieter rooms are faster. In a noisy place, choose **Safe** or **Rugged** on the sender only; the receiver adjusts by itself.
+- To send without anyone hearing, choose **Silent**. Turn the media volume to maximum, keep the phones 10–50 cm apart and hold them still. **Silent Robust** helps in a loud crowd or with a weak speaker. Background talking and music barely affect Silent, because they are much lower in pitch.
 - Keep messages short: Sound is best for text and links. Photos over about 2 KB take minutes.
 - Several receivers can listen at once.
 
@@ -521,7 +543,8 @@ If a message you already received appears as soon as you open the Receive screen
 | **The camera view just says "Starting camera…"** | The camera permission is probably off. Turn it on in the phone's Settings, then leave and reopen **Receive**. |
 | **Sound: nothing happens** | Tap **Enable microphone**. Check that **Mic input** moves when you speak. Turn the sender's volume up and check that **Tone signal** moves while it plays. |
 | **Sound: "too damaged" keeps rising** | Turn the volume up, point the speaker at the microphone, move closer, or choose **Rugged** on the sender. |
-| **Sound keeps playing after I left the send screen** | **Cancel transmission**, the **✕** button and the back button leave the screen but do not stop the tones. Next time, tap **Stop** on the **Playing …** card first. If it is playing now, it stops by itself after a while, or you can close the app. |
+| **Sound: Silent sends never arrive** | Look at the receiver's **Silent band 18–20 kHz** meter while the sender plays. If it stays near 0%, turn the sender's media volume to maximum and disconnect Bluetooth headphones; then try swapping which phone sends. If it still doesn't move, one phone can't play or hear 18–20 kHz: use **Audible**. If it moves but nothing decodes, move closer, hold still, or choose **Silent Robust**. |
+| **Sound: the two readouts disagree** | Compare the sender's **Sending now** with the receiver's **Hearing now**. If the receiver shows **—**, the sound isn't reaching it: volume up, move closer, uncover the speaker and microphone. If it shows a different steady frequency, something nearby (a fan, a charger, another app) is louder than the sender. The sender's readout may change a split second before the sound; that's normal. |
 | **Vibrate: "Send failed"** | Make sure the other phone is on **Receive → Vibrate** before you start, press the phones together firmly, and tap **Retry**. |
 | **"Payload too large for Light fountain QR"** | The file is too big. Choose a smaller photo or video. |
 | **A photo is not in the Gallery** | Look in the **Adaptive Comm** album. Tap **Retry save** on the card. On Android 9 or older, allow storage access. |

@@ -6,6 +6,21 @@ Back to the [documentation index](../README.md).
 
 ---
 
+## Contents
+
+1. [What you need](#1-what-you-need)
+2. [Install Flutter](#2-install-flutter)
+3. [Get the project](#3-get-the-project)
+4. [Verify the code before touching a phone](#4-verify-the-code-before-touching-a-phone)
+5. [Run on an Android phone](#5-run-on-an-android-phone)
+6. [Run on an iPhone (macOS only)](#6-run-on-an-iphone-macos-only)
+7. [Run in Chrome (web)](#7-run-in-chrome-web)
+8. [Windows-specific notes](#8-windows-specific-notes)
+9. [Project layout at a glance](#9-project-layout-at-a-glance)
+10. [Next steps](#10-next-steps)
+
+---
+
 ## 1. What you need
 
 ### Software
@@ -50,11 +65,12 @@ flutter doctor --android-licenses
 ## 3. Get the project
 
 ```powershell
-cd C:\Users\<you>\Dev
-git clone <repository-url> adaptive_physical_communication_system
+git clone https://github.com/harsharaj-s/adaptive_physical_communication_system.git
 cd adaptive_physical_communication_system
 flutter pub get
 ```
+
+Clone into a short path without spaces (for example `C:\dev` on Windows); see [Windows-specific notes](#8-windows-specific-notes).
 
 `flutter pub get` downloads every package listed in `pubspec.yaml`: camera, qr, zxing2, record, audioplayers, vibration, sensors_plus, permission_handler, wakelock_plus, image, file_picker, video_player, gal, path_provider, url_launcher and web.
 

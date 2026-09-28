@@ -51,11 +51,12 @@ Back to the [documentation index](../README.md).
 | Threat | Channel | Current state | Mitigation |
 |---|---|---|---|
 | Eavesdropping | Light, Sound | Anyone in range can decode | Shield the screen; lower the volume; move closer; [encrypt](#7-adding-encryption) |
+| Unnoticed transfer | Sound (Silent) | Silent tones are inaudible to most adults, so people nearby may not notice a transfer, but any phone running the app within about half a metre can still decode it | Treat Silent as quiet, not private; it offers no confidentiality |
 | Eavesdropping | Vibration | Requires touching the phones | Inherently private, but very slow |
 | Spoofed message | Light, Sound | A fake stream with valid CRCs is accepted | Authenticated encryption with a shared passphrase |
 | Session hijack / pollution | Light | Frames with the victim's session ID but wrong data would corrupt the decode (caught later only if the envelope magic breaks) | Keyed MAC per frame, or authenticated encryption of the envelope |
 | Replay | Light, Sound | A recording decodes again | Timestamps or nonces inside an authenticated envelope |
-| Jamming | Sound | Loud noise in the 1.2–7.2 kHz band stops decoding | Rugged profile; move away; switch to Light |
+| Jamming | Sound | Loud noise in the 1.2–7.2 kHz band stops decoding; ordinary noise barely reaches 18–20 kHz, but a deliberate high-frequency tone would jam Silent | Rugged profile, or Silent in a noisy room; move away; switch to Light |
 | Jamming | Light | Another screen in view, glare | Per-session decoders (up to 3) keep going; aim carefully |
 | Denial of service by memory | Light | Frames can announce large K or file lengths | The receiver keeps at most 3 sessions; K and block sizes come from a CRC-checked header. A hostile frame could still claim a large file, so a hard cap on `fileLen` would be a sensible addition |
 | Malicious media | All | Received bytes go to Flutter's image decoder and the platform video player | Platform decoders are sandboxed and regularly patched; keep the OS updated |
@@ -130,4 +131,6 @@ This is on the [Roadmap](../project/ROADMAP.md).
 
 ## 9. Reporting a problem
 
-Open an issue on the project's GitHub repository with the steps to reproduce. For anything that could hurt users (for example a crash triggered by a crafted frame), describe the impact but **don't post a working exploit** in the public issue; ask the maintainer for a private contact first.
+For ordinary bugs, open an issue on the project's GitHub repository with the steps to reproduce.
+
+For anything that could hurt users (for example a crash triggered by a crafted frame), **don't open a public issue**. Report it privately through the repository's **Security** tab, as described in the [security policy](../../SECURITY.md). That policy also lists what is in scope, the by-design limitations above that don't need reporting, and the response times to expect.

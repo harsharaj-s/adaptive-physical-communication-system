@@ -42,10 +42,10 @@ Related documents: [Architecture](../architecture/ARCHITECTURE.md), [API referen
 | | `lib/ui/screens/hardware_screen.dart` | `HardwareScreen` (Hardware Channels) |
 | | `lib/ui/screens/transfer_screen.dart` | `TransferScreen` (Legacy Messages) |
 | | `lib/ui/screens/performance_screen.dart` | `PerformanceScreen` (Performance Comparison) |
-| Widgets | `lib/ui/widgets/*.dart` | 18 files (including `app_logo.dart`), see [section 7](#7-widgets-libuiwidgets) |
+| Widgets | `lib/ui/widgets/*.dart` | 19 files (including `app_logo.dart` and `live_tone_meter.dart`), see [section 7](#7-widgets-libuiwidgets) |
 | Models | `lib/ui/models/compose_payload.dart`, `physical_channel_mode.dart` | `ComposePayload`, `PhysicalChannelMode` |
 | Theme | `lib/ui/theme/app_layout.dart` | Breakpoints, `PageContainer`, `SectionCard`, `StatusChip`, `EmptyState`, banners |
-| UI state notifiers (core) | `lib/core/platform/platform_capabilities.dart`, `acoustic_receiver_state.dart`, `acoustic_transmitter_state.dart`, `vibration_transmitter_state.dart` | Global `ChangeNotifier` singletons used by the UI |
+| UI state notifiers (core) | `lib/core/platform/platform_capabilities.dart`, `acoustic_receiver_state.dart`, `acoustic_transmitter_state.dart`, `acoustic_spectrum_state.dart`, `vibration_transmitter_state.dart` | Global `ChangeNotifier` singletons used by the UI |
 
 ---
 
@@ -135,6 +135,7 @@ High-frequency updates (QR frames, camera metrics, microphone levels) do not go 
 | `app.opticalMetricsNotifier` | `core/physical/optical_modem.dart` (`OpticalMetricsNotifier`) | per optical channel, may be `null` | Fountain QR receiver (`OpticalTransferMetrics`) | `_LightListenView` HUD and progress label, `_OpticalTxView` |
 | `acousticReceiverState` | `core/platform/acoustic_receiver_state.dart` | `AcousticReceiverState` | Microphone callback (levels, phase, fountain progress) | `_SoundListenView`, `AcousticRxProgressCard`, `_ListeningBanner` (reads it directly) |
 | `acousticTransmitterState` | `core/platform/acoustic_transmitter_state.dart` | `AcousticTransmitterState` | Sound fountain transmitter | `_SoundTxView`, `AcousticTxProgressCard` |
+| `acousticSpectrumState` | `core/platform/acoustic_spectrum_state.dart` | `AcousticSpectrumState` | Tones on air (sender) and mic spectrum (receiver) | `LiveToneMeter` |
 | `vibrationTransmitterState` | `core/platform/vibration_transmitter_state.dart` | `VibrationTransmitterState` | Vibration channel (motor state, accelerometer signal) | `_VibrateTxView`, `_VibrateListenView`, `HardwareScreen._VibrationSection` |
 | `GallerySaver.instance` | `core/media/gallery_saver.dart` | `GallerySaver` | Save start / success / error | `_GallerySaveButton` |
 
@@ -233,14 +234,14 @@ error   ──[Retry]──► ready
 | Heading (`_readyTitle`) | `'Ready to transmit via QR'` | `'Ready to play'` | `'Ready to vibrate'` |
 | Subtitle | `mode.subtitle` | `mode.subtitle` | `mode.subtitle` |
 | Payload card | `payload.preview` + estimate line (below) | `payload.preview` | `payload.preview` |
-| Tips card | `'Tips for a smooth transfer'` + 4 bullets + `'QR density'` `SegmentedButton<OpticalTxProfile>` over `OpticalTxProfile.values` | `'Tips for a smooth transfer'` + 3 bullets + `AcousticProfilePicker` + estimate line | none |
+| Tips card | `'Tips for a smooth transfer'` + 4 bullets + `'QR density'` `SegmentedButton<OpticalTxProfile>` over `OpticalTxProfile.values` | `'Tips for a smooth transfer'` + 3 audible bullets or 4 Silent bullets (chosen by `app.acousticTxProfile.isSilent`) + `AcousticProfilePicker` + `AcousticFrameBreakdown` + estimate line | none |
 | Extra | | | `StatusChip('Contact required — 1:1 only', Icons.touch_app, StatusTone.warning)` because `!mode.supportsBroadcast` |
 
 - **Light estimate line** (only when `payload.byteSize > 0`):
   `'${(byteSize / 1000).toStringAsFixed(byteSize >= 100000 ? 0 : 1)} KB · Fountain QR · ${opticalTxProfile.resolveFor(byteSize).blockLen} B/frame · ~${opticalTxProfile.estimatedSeconds(byteSize)}s'`.
   `estimatedSeconds` is `ceil((K + 2) / (txFps × expectedCaptureYield))`, with `expectedCaptureYield` 0.7 (≤ 160 B), 0.65 (≤ 240 B), 0.55 (≤ 330 B), otherwise 0.35.
-- **Sound estimate line** (only when `payload.byteSize > 0`): `'${byteSize} B · ~${app.acousticEtaSeconds(byteSize)}s'`, where `acousticEtaSeconds` is `ceil(AcousticFountainModem.expectedSymbols(k) × profile.frameSeconds())`, `k = max(1, ceil(bytes / blockLen))` and `expectedSymbols(k) = ceil(1.25·k) + 2`.
-- Both lines use `payload.byteSize` (the raw content), not the APCM envelope that is actually sent, so they slightly under-count (by the envelope header, and for demo photos by any size change from send-time recompression).
+- **Sound estimate line** (only when `payload.byteSize > 0`): `'${envelopeBytes} B on air · ~${app.acousticEtaSeconds(envelopeBytes)}s typical'`, where `acousticEtaSeconds` is `ceil(AcousticFountainModem.expectedSymbols(k) × profile.frameSeconds())`, `k = max(1, ceil(bytes / blockLen))` and `expectedSymbols(k) = ceil(1.25·k) + 2`.
+- The Sound line uses `payload.envelopeBytes`, the APCM envelope size computed without building it (text and links: 7 + UTF-8 length). For photos it is an upper bound, because send-time recompression can change the size. The Light line still uses `payload.byteSize` (the raw content), which under-counts by the envelope header; at Light's block sizes that rarely changes K.
 - `SegmentedButton.onSelectionChanged` → `app.setOpticalTxProfile(set.first)`; `AcousticProfilePicker.onChanged` → `app.setAcousticTxProfile`.
 
 **Bottom actions:**
@@ -258,7 +259,7 @@ error   ──[Retry]──► ready
 **Transmitting bodies:**
 
 - `_OpticalTxView`: `ListenableBuilder` over `Listenable.merge([opticalTransmitterState, app.opticalMetricsNotifier ?? app])`; text `'Streaming… tap Stop when the receiver shows DONE'` (or `app.statusMessage`), `'Point the receiver camera at this screen'`, and a compact `OpticalTransferHud`. The full-screen overlay is drawn on top, so this view is normally hidden.
-- `_SoundTxView`: `ListenableBuilder(acousticTransmitterState)`; `_PulsingIcon(Icons.graphic_eq, lightBlueAccent, active: app.running || tx.playing)`, `'Playing acoustic tones…'`, the "keep playing" hint, `AcousticTxProgressCard(onCancel: app.cancelAcousticTransmit)`, and a `LinearProgressIndicator` from `app.senderSnapshot!.progress!.progressPercent` when not playing (protocol-path fallback).
+- `_SoundTxView`: `ListenableBuilder(acousticTransmitterState)`; `_PulsingIcon(Icons.graphic_eq, lightBlueAccent, active: app.running || tx.playing)`, `'Playing acoustic tones…'`, the "keep playing" hint, `AcousticTxProgressCard(onCancel: app.cancelAcousticTransmit)`, `const LiveToneMeter.sending()` while `tx.playing`, and a `LinearProgressIndicator` from `app.senderSnapshot!.progress!.progressPercent` when not playing (protocol-path fallback).
 - `_VibrateTxView`: `ListenableBuilder(vibrationTransmitterState)`; `_PulsingIcon(Icons.vibration, purpleAccent)`, `'Vibrating…'` / `'Transmitting…'`, `'Hold phones together — vibration is contact-only (1:1)'`.
 
 `_PulsingIcon` is a `ScaleTransition` 1.0 → 1.15, 900 ms, `Curves.easeInOut`, repeating in reverse while `active`, `CircleAvatar` radius 52.
@@ -350,7 +351,7 @@ Below the preview, a `ListenableBuilder(Listenable.merge([opticalTransmitterStat
 | mic live | `'Mic live — listening for sender tones'` |
 | otherwise | `'Tap Enable microphone if listening does not start'` |
 
-Then `_MicPulseIcon(active: micLive, detecting: tone > 0.12)` (1200 ms repeating scale up to 1.08, amber when detecting, light blue when active, `white38` otherwise), a help paragraph, `const AcousticRxProgressCard()`, two `_LevelMeter`s (`'Mic input'` from `rx.inputLevel`, `'Tone signal'` from `rx.toneStrength`, amber above 0.12; each an 8 px `LinearProgressIndicator` with a rounded percentage), a mic status row (`'Microphone streaming'` / `'Microphone not active'`), and `FilledButton.icon('Enable microphone')` when permission is denied or the mic is not live. `micLive` comes from `app.acousticMicActive`.
+Then `_MicPulseIcon(active: micLive, detecting: tone > 0.12)` (1200 ms repeating scale up to 1.08, amber when detecting, light blue when active, `white38` otherwise), a help paragraph, `const AcousticRxProgressCard()`, `const LiveToneMeter.hearing()` while the mic is live, three `_LevelMeter`s (`'Mic input'` from `rx.inputLevel`; `'Tone signal'` from `rx.toneStrength`, amber above 0.12; `'Silent band 18–20 kHz'` from `rx.highBandLevel`, teal above 0.3; each an 8 px `LinearProgressIndicator` with a rounded percentage), a mic status row (`'Microphone streaming'` / `'Microphone not active'`), and `FilledButton.icon('Enable microphone')` when permission is denied or the mic is not live. `micLive` comes from `app.acousticMicActive`.
 
 **`_VibrateListenView`:** `ListenableBuilder(vibrationTransmitterState)`; `'Detecting vibration…'`, the contact hint, and `'Signal ${(lastMagnitude * 100).toStringAsFixed(0)}%'` when `lastMagnitude > 0`. The vibration channel publishes `lastMagnitude` as `(|magnitude − baseline| / 6).clamp(0, 1)`.
 
@@ -465,7 +466,9 @@ This is the only screen that can send generic files (`FileType.any`).
 | `showAppAboutDialog` / `AppBrand` | `app_logo.dart` | About dialog with licences; `AppBrand` holds the name, short name, tagline, version and asset paths | `BuildContext` | `HomeScreen` ⓘ, `DevMenuScreen` |
 | `AcousticRxProgressCard` | `acoustic_transfer_hud.dart` | Sound receive progress (blocks, frames, damaged) | none (reads `acousticReceiverState`) | `ReceiveScreen._SoundListenView` |
 | `AcousticTxProgressCard` | `acoustic_transfer_hud.dart` | Sound playback progress with **Stop** | `VoidCallback? onCancel` | `SendTransmitScreen._SoundTxView` |
-| `AcousticProfilePicker` | `acoustic_transfer_hud.dart` | Sound speed chips | `AcousticTxProfile selected`, `ValueChanged<AcousticTxProfile> onChanged`, `bool enabled = true` | `SendTransmitScreen._ReadyBody` |
+| `LiveToneMeter` | `live_tone_meter.dart` | Live kHz readout and 0–22 kHz spectrum strip | `.sending()` / `.hearing()` | `SendTransmitScreen._SoundTxView`, `ReceiveScreen._SoundListenView` |
+| `AcousticProfilePicker` | `acoustic_transfer_hud.dart` | Sound band switch and speed chips | `AcousticTxProfile selected`, `ValueChanged<AcousticTxProfile> onChanged`, `bool enabled = true` | `SendTransmitScreen._ReadyBody` |
+| `AcousticFrameBreakdown` | `acoustic_transfer_hud.dart` | "Frame to be sent": airtime split of one frame, tone range, frame time, frame count | `AcousticTxProfile profile`, `int envelopeBytes` | `SendTransmitScreen._ReadyBody` |
 | `ChatBubble` | `chat_bubble.dart` | Chat message bubble | `ChatMessage message` | `TransferScreen` |
 | `ChatInputBar` | `chat_input_bar.dart` | Text field, attach sheet, send button | `controller`, `enabled`, `onSend`, `onPickImage`, `onPickVideo`, `onPickFile`, `hintText = 'Type a message…'` | `TransferScreen` |
 | `EndpointPanel` | `endpoint_panel.dart` | Transfer dashboard for one endpoint | `String title`, `DashboardSnapshot? snapshot`, `String? emptyMessage` | `SimulationScreen`, `TransferScreen` |
@@ -485,8 +488,37 @@ This is the only screen that can send generic files (`FileType.any`).
 ### 7.1 `acoustic_transfer_hud.dart`
 
 - **`AcousticRxProgressCard`**: a `ListenableBuilder(acousticReceiverState)` that returns `SizedBox.shrink()` unless `rx.transferActive` (`needed > 0 && collected < needed`). Shows `'Receiving over sound'` or `'Receiving over sound · ${rx.profileLabel}'`, the percentage `round(transferFraction × 100)`, an 8 px bar, `'${collected} of ${needed} blocks · ${framesRepaired} frames read'` plus `' · ${framesRejected} too damaged'` when non-zero, and `'Keep the sender playing until this completes.'` It deliberately shows blocks, not bytes (see the class doc comment).
-- **`AcousticTxProgressCard`**: a `ListenableBuilder(acousticTransmitterState)` that hides unless `tx.playing`. Header `'Playing ${totalBytes} B · ${profileLabel}'` with a `TextButton('Stop')` when `onCancel != null`. The bar is indeterminate while `fraction == 0`; `fraction = symbolsSent / symbolsPlanned` clamped to 1, where the planned count is `ceil(1.25·K) + 2`, so the bar stays full while the rateless stream continues. Footer `'Turn the volume up and point the speaker at the other phone. About ${estimateSeconds.round()}s if it is heard cleanly.'`
-- **`AcousticProfilePicker`**: title `'Sound speed'`; a `Wrap` of `ChoiceChip`s over `AcousticTxProfile.values.reversed` (so **Fast, Standard, Safe, Rugged**), each labelled `'${label} · ${netBytesPerSecond().round()} B/s'` (36, 27, 18 and 11 B/s); caption `'${selected.conditionHint}. The receiving phone detects the speed by itself.'` Chips are disabled when `enabled` is false.
+- **`AcousticTxProgressCard`**: a `ListenableBuilder(acousticTransmitterState)` that hides unless `tx.playing`. Header icon `Icons.volume_up` (or `Icons.hearing_disabled` when `tx.silent`), `'Playing ${totalBytes} B · ${profileLabel}'` and a `TextButton('Stop')` when `onCancel != null`. The bar is indeterminate while `fraction == 0`; `fraction = symbolsSent / symbolsPlanned` clamped to 1, where the planned count is `ceil(1.25·K) + 2`, so the bar stays full while the rateless stream continues. Footer `'Turn the volume up and point the speaker at the other phone. About ${estimateSeconds.round()}s if it is heard cleanly.'`, or for Silent `'Playing 18–20 kHz tones — you will not hear them. Media volume up, speaker towards the other phone. About …s if it is heard cleanly.'`
+- **`AcousticProfilePicker`**: title `'Sound band'` over a `SegmentedButton<AcousticBand>` (**Audible** with `Icons.graphic_eq`, **Silent** with `Icons.hearing_disabled`). Changing band calls `onChanged(AcousticTxProfile.defaultFor(band))` (Standard or Silent). Then title `'Speed'` and a `Wrap` of `ChoiceChip`s over `AcousticTxProfile.forBand(selected.band).reversed` (audible: **Fast, Standard, Safe, Rugged**; Silent: **Silent, Silent Robust**), each labelled `'${label} · ${rate} B/s'`, where the rate has one decimal below 10 B/s (36, 27, 18, 11; 5.0, 3.4). Caption `'${selected.conditionHint}. The receiving phone detects the band and speed by itself.'` All controls are disabled when `enabled` is false.
+- **`AcousticFrameBreakdown`**: label `'FRAME TO BE SENT'`; a 14 px stacked bar of **Marker**, **Header**, **Message**, **CRC** and **Parity**, sized by **airtime** (a byte costs `samplesPerSymbol × 2 / groups` samples), with a percentage legend; then three stats: **TONES** (`codec.lowestHz`–`highestHz` in kHz), **FRAME** (`frameSeconds()`), and **FRAMES** (`K · K × frameSeconds` s, labelled **FRAMES (MIN)** when K > 1, because the fountain may need a few more). Standard splits about 2 / 9 / 63 / 2 / 24%; Silent about 1 / 17 / 47 / 4 / 31%.
+
+### 7.1a `live_tone_meter.dart`
+
+**`LiveToneMeter`** is a stateful card with two constructors. `LiveToneMeter.sending()` shows amber **SENDING NOW**, and `LiveToneMeter.hearing()` shows light-blue **HEARING NOW**. It uses the same card style as the other Sound HUD cards (6% white fill, 14 px radius, accent border at 35%).
+
+- **Rebuilds.** The widget adds itself as a listener to `acousticSpectrumState` in `initState` and removes itself in `dispose`. The sending variant also runs a 50 ms `Timer.periodic` only while `txTones != null`, starting and cancelling it as bursts begin and end. No other part of the screen rebuilds.
+- **Sending headline.** From `acousticSpectrumState.txNow()`:
+  - One tone shows that frequency, for example `18.95 kHz`.
+  - Several tones show the range, for example `1.94–6.80 kHz`.
+  - Silence or no burst shows `—` in `white38`.
+- **Sending detail.**
+  - `Data · 8 tones at once` (or `1 tone`) during data symbols.
+  - `Sync marker · 2 tones at once` during the marker.
+  - `Gap between frames` during lead or tail silence.
+  - `Between bursts` when the burst's audio has run out.
+- **Hearing headline.** The strongest peak from `acousticSpectrumState.rx`, or `—`.
+- **Hearing detail.** `${peakDbfs} dBFS`, plus ` · +N more tones` when there are other peaks. With no peaks it shows `No clear tone`.
+- **Number format.** Frequencies from 1 kHz up use two decimals in kHz, and lower ones whole Hz. The headline is 24 px bold with tabular figures, so the digits don't jitter.
+- **Spectrum strip.** `_SpectrumStripPainter` draws a 58 px strip:
+  - A 0–22.05 kHz plot area.
+  - The Audible and Silent tone ranges shaded amber and teal at 10%. They are computed once from every profile's `buildCodec().lowestHz`/`highestHz`, so they follow any change to the tone plan.
+  - When hearing, the 96 band levels as white bars at 35%.
+  - A 2 px accent line at every current tone or peak.
+  - Ticks and labels at `0`, `5k`, `10k`, `15k` and `20k`.
+  - `shouldRepaint` compares the tone list and band list by identity, so a sender tick inside the same symbol repaints nothing.
+- **Placement.**
+  - Send screen: after `AcousticTxProgressCard` in `_SoundTxView`, only while `tx.playing`.
+  - Receive screen: after `AcousticRxProgressCard` in `_SoundListenView`, only while the microphone is live.
 
 ### 7.2 `chat_bubble.dart` and `chat_input_bar.dart`
 
@@ -690,7 +722,7 @@ These are behaviours found by reading the code. They are documented here so that
 | Where | Behaviour |
 |---|---|
 | `SendTransmitScreen._cancel` → `AppController.requestCancelTransfer` | Cancelling a **Sound** send (the **✕**, **Cancel transmission** or back) does not stop the acoustic modem. `requestCancelTransfer` never calls `cancelAcousticTransmit()`, and the modem's `shouldContinue` checks only the channel's own `_running`. The tones continue after the screen closes until the symbol budget `max(6K, K + 24)` is used up. Only the card's **Stop** (`app.cancelAcousticTransmit`) stops it at once. |
-| `SendTransmitScreen._startTransmit` | For Sound, pressing **Stop** ends the stream normally, so the screen shows **Sent successfully** (and the chat entry is marked `delivered`), even though the sender cannot know whether anyone received it. Only Light gets the **Streaming stopped** / **Resume streaming** result. |
+| `SendTransmitScreen._startTransmit` | For Sound, pressing **Stop** ends the stream normally, so the screen shows **Sent successfully** (the chat entry is marked `sent`). Only Light gets the **Streaming stopped** / **Resume streaming** result. |
 | `ReceiveScreen._resolveVisibleMessage` | `_pickMode()` resets `_lastPresentedId` to `null`, so on opening Receive (or after **Change mode**) the most recent incoming message still in `app.chatMessages` from an earlier session is shown immediately. |
 | `_LightListenView` | `OpticalTransferCompleteCard` is only rendered in the listening view, which is replaced by the received-content pane as soon as the message is delivered (within one 80 ms poll). In practice it is only visible briefly, or when a completed file fails envelope validation. |
 | `SimulationScreen` | **Run All Scenarios** writes its result (`'N/9 scenarios passed'`) only to `app.statusMessage`, which this screen does not display, and does not update `lastSimResult` or the logs. |
@@ -722,7 +754,7 @@ These are behaviours found by reading the code. They are documented here so that
 ### 14.1 A new value for an existing option (for example a new Light density or Sound speed)
 
 1. Add the constant to the core profile class: `OpticalTxProfile` in `lib/core/physical/optical_tx_profile.dart`, or `AcousticTxProfile` in `lib/core/physical/acoustic/acoustic_tx_profile.dart`.
-2. Add it to the class's `values` list. The order matters: `SegmentedButton<OpticalTxProfile>` shows `OpticalTxProfile.values` in order; `AcousticProfilePicker` shows `AcousticTxProfile.values.reversed`, and `AcousticTxProfile.slower` walks `values` from slowest to fastest.
+2. Add it to the class's `values` list. The order matters: `SegmentedButton<OpticalTxProfile>` shows `OpticalTxProfile.values` in order; `AcousticProfilePicker` shows `AcousticTxProfile.forBand(band).reversed`, and `AcousticTxProfile.slower` walks the band's list (`audibleValues` or `silentValues`) from slowest to fastest.
 3. For Sound, add a case to `conditionHint` (the default case returns `'Normal room, across a table'`).
 4. Check that `label` is short enough: the Light segments use 12 px text inside a four-way `SegmentedButton`.
 5. No UI code changes are needed; the pickers, the estimate lines (`estimatedSeconds`, `acousticEtaSeconds`) and the HUD labels read from the profile. For Light, also check `expectedCaptureYield` for the new `blockLen`.

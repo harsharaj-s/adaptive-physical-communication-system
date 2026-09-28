@@ -61,26 +61,26 @@ Source: `lib/core/chat/chat_payload_codec.dart`.
 
 **Overhead** = `7 + nameLen + mimeLen`.
 
-### Example 1: text "sos" (31 bytes)
+### Example 1: text "sos" (10 bytes)
 
-`ChatPayloadCodec.encodeText('sos')` always uses the name `message.txt` and MIME `text/plain`:
-
-```
-41 50 43 4D  00  0B  6D 65 73 73 61 67 65 2E 74 78 74  0A  74 65 78 74 2F 70 6C 61 69 6E  73 6F 73
-└─ "APCM" ─┘ type len └──────── "message.txt" ───────┘ len └───────── "text/plain" ────┘  └"sos"┘
-             =text =11                                  =10
-```
-
-4 + 1 + 1 + 11 + 1 + 10 + 3 = **31 bytes**, of which 28 are overhead.
-
-### Example 2: link "https://example.com" (47 bytes)
+`ChatPayloadCodec.encodeText` and `encodeLink` leave the name and MIME type empty. The type byte already says what the content is, and on Sound the 21 bytes of `message.txt` / `text/plain` used to cost more airtime than a short message itself. Receivers have always read empty fields as absent, so older builds decode these envelopes unchanged.
 
 ```
-41 50 43 4D  04  08  6C 69 6E 6B 2E 75 72 6C  0D  74 65 78 74 2F 75 72 69 2D 6C 69 73 74
-             link =8 └──── "link.url" ─────┘  =13 └────────── "text/uri-list" ──────────┘
-68 74 74 70 73 3A 2F 2F 65 78 61 6D 70 6C 65 2E 63 6F 6D
-└──────────────────── "https://example.com" ──────────┘
+41 50 43 4D  00  00  00  73 6F 73
+└─ "APCM" ─┘ type name mime └"sos"┘
+             =text len=0 len=0
 ```
+
+4 + 1 + 1 + 1 + 3 = **10 bytes**, of which 7 are overhead.
+
+### Example 2: link "https://example.com" (26 bytes)
+
+```
+41 50 43 4D  04  00  00  68 74 74 70 73 3A 2F 2F 65 78 61 6D 70 6C 65 2E 63 6F 6D
+             link =0  =0 └──────────────── "https://example.com" ──────────────┘
+```
+
+`ChatPayloadCodec.overheadBytes()` returns the overhead for given name and MIME strings without building the envelope; `ComposePayload.envelopeBytes` uses it to show the on-air size before sending.
 
 ### Example 3: photo
 
@@ -129,21 +129,21 @@ Constants: `qrFountainHeaderSize = 22`, `qrFountainCrcSize = 4`, `qrFountainOver
 
 ### Example: first frame of "sos" at Auto density (186 bytes)
 
-The 31-byte "sos" envelope is below 7 680 B, so Auto picks `blockLen = 160` and K = ⌈31 / 160⌉ = 1.
+The 10-byte "sos" envelope is below 7 680 B, so Auto picks `blockLen = 160` and K = ⌈10 / 160⌉ = 1.
 
 ```
 Header (22 B):
-41 50 43 46   03   00   E1 AF 1D FB   00 00 00 00   00 01   00 A0   00 00 00 1F
-└── APCF ──┘  v3  flags └─sessionId─┘ └symbolIndex┘  K=1   blk=160  fileLen=31
+41 50 43 46   03   00   FD 1C 1B 6E   00 00 00 00   00 01   00 A0   00 00 00 0A
+└── APCF ──┘  v3  flags └─sessionId─┘ └symbolIndex┘  K=1   blk=160  fileLen=10
 
 Payload (160 B): the envelope, then zero padding
-41 50 43 4D 00 0B 6D 65 73 73 61 67 65 2E 74 78 74 0A 74 65 78 74 2F 70 6C 61 69 6E 73 6F 73 00 00 00 …(129 × 00)
+41 50 43 4D 00 00 00 73 6F 73 00 00 00 …(150 × 00)
 
 CRC-32 (4 B):
-AA 15 16 79
+78 EE DD F5
 ```
 
-Session ID `E1AF1DFB` = `CRC32(envelope) ^ (160 × 0x9E3779B1)` = `0303135B ^ …`, masked to 32 bits (see [§7](#7-session-identifiers)).
+Session ID `FD1C1B6E` = `CRC32(envelope) ^ (160 × 0x9E3779B1)` = `1FB015CE ^ E2AC0EA0`, masked to 32 bits (see [§7](#7-session-identifiers)).
 
 186 framed bytes fit QR **version 8** at error-correction level L (capacity 192 bytes).
 
@@ -177,27 +177,26 @@ Source: `lib/core/physical/acoustic/acoustic_fountain_frame.dart`.
 | 4 | 1 | `blockLen` | u8; also confirms which profile the frame belongs to |
 | 5 | 3 | `fileLen` | u24 (up to 16 MiB) |
 | 8 | 1 | `sessionId` | u8: `(millisecondsSinceEpoch ~/ 97) & 0xFF` |
-| 9 | L | Symbol payload | L = profile block length (32 / 48 / 64) |
+| 9 | L | Symbol payload | L = profile block length (32 / 48 / 64 audible, 24 Silent) |
 | 9 + L | 2 | CRC-16/CCITT-FALSE | Over bytes 0 … 8 + L |
-| 11 + L | P | Reed-Solomon parity | P = 20 or 24 |
+| 11 + L | P | Reed-Solomon parity | P = 20 or 24 audible, 16 Silent |
 
 Constants: `acousticHeaderSize = 9`, `acousticCrcSize = 2`, `acousticFrameOverhead = 11`. Codeword length = `11 + L + P`.
 
 ### Example: "sos" on the Standard profile (99 bytes)
 
-Standard uses L = 64 and P = 24. K = ⌈31 / 64⌉ = 1. The session ID below is `0x5C`:
+Standard uses L = 64 and P = 24. K = ⌈10 / 64⌉ = 1. The session ID below is `0x5C`:
 
 ```
-Header (9 B):   00 00   00 01   40    00 00 1F   5C
-                sym=0   K=1    L=64  fileLen=31  session
+Header (9 B):   00 00   00 01   40    00 00 0A   5C
+                sym=0   K=1    L=64  fileLen=10  session
 
-Payload (64 B): 41 50 43 4D 00 0B 6D 65 73 73 61 67 65 2E 74 78 74 0A 74 65 78 74 2F 70
-                6C 61 69 6E 73 6F 73 00 … (33 × 00)
+Payload (64 B): 41 50 43 4D 00 00 00 73 6F 73 00 … (54 × 00)
 
-CRC-16 (2 B):   98 58
+CRC-16 (2 B):   33 8A
 
 RS parity (24 B):
-                F2 15 5B 0F 5D D6 55 86 8C CC 93 4C 82 B9 30 42 BC 6C 95 8B 62 D0 DC 5B
+                0C 1F D7 D2 E4 3C 72 44 02 62 AF 01 0D F4 1F 8E E0 E4 F3 AC 60 94 9D B2
 ```
 
 Error-correction behaviour of this exact codeword, measured with the real decoder:
@@ -208,6 +207,24 @@ Error-correction behaviour of this exact codeword, measured with the real decode
 | 13 bytes corrupted, no reliability information | Rejected |
 | The same 13 bytes, with the demodulator marking them as least reliable | **Repaired** by GMD erasure decoding |
 
+### Example: "sos" on the Silent profiles (51 bytes)
+
+Silent and Silent Robust use L = 24 and P = 16, so the same envelope still fits one frame:
+
+```
+Header (9 B):   00 00   00 01   18    00 00 0A   5C
+                sym=0   K=1    L=24  fileLen=10  session
+
+Payload (24 B): 41 50 43 4D 00 00 00 73 6F 73 00 … (14 × 00)
+
+CRC-16 (2 B):   A6 FA
+
+RS parity (16 B):
+                3D 8D FB 96 86 E0 22 BF 17 A0 36 F2 E2 1E 43 89
+```
+
+With the real decoder, 8 corrupted bytes are repaired, 9 are rejected, and the same 9 are repaired when the demodulator marks them as least reliable.
+
 ### Profile geometry
 
 | Profile | L | P | Codeword | Bytes per symbol (G/2) | Data symbols ⌈codeword / (G/2)⌉ |
@@ -216,8 +233,9 @@ Error-correction behaviour of this exact codeword, measured with the real decode
 | Safe | 48 | 24 | 83 | 3 | 28 |
 | Standard | 64 | 24 | 99 | 4 | 25 |
 | Fast | 64 | 24 | 99 | 4 | 25 |
+| Silent / Silent Robust | 24 | 16 | 51 | 0.5 | 102 |
 
-On air, each frame is a **2-frame sync marker** (2 048 samples) followed by the data symbols. See [Sound Channel](../channels/SOUND_CHANNEL.md).
+On air, each frame is a **2-frame sync marker** (2 048 samples) followed by the data symbols. Audible markers play both sync tones together; Silent markers play bin 424 for the first 1 024 samples and bin 427 for the second. See [Sound Channel](../channels/SOUND_CHANNEL.md).
 
 ### Nibble-to-tone mapping
 
@@ -231,6 +249,8 @@ byte3 = 01 → g6 = 0 (bin 136), g7 = 1 (bin 153)
 ```
 
 The tone bin is `40 + 16·g + value` and its frequency is `bin × 43.066 Hz`. For example, bin 153 is 6 589.1 Hz.
+
+Silent profiles have one group, so each symbol carries one nibble, high half first: byte `0x41` becomes tone value 4 (bin 431 + 2·4 = 439, 18 906 Hz), then value 1 (bin 433, 18 648 Hz). Silent tone bins are `431 + 2·value`.
 
 ---
 
@@ -331,11 +351,11 @@ These formats are kept for reuse and tests (see [Legacy Modems](../channels/LEGA
 
 ## 9. Size and overhead summary
 
-| Message | Envelope | Light (Auto) | Sound (Standard) |
-|---|---|---|---|
-| "sos" | 31 B | 1 frame × 186 B | 1 block; ≈4 frames × 99 B expected |
-| 100-character text | ≈128 B | 1 frame × 186 B | 2 blocks; ≈5 frames expected |
-| 5 KB photo | ≈5.1 KB | 33 frames × 186 B | not recommended |
-| 78 KB video | ≈80 KB | 243 frames × 356 B (+ ≈2 extra) | not supported (over 8 KiB) |
+| Message | Envelope | Light (Auto) | Sound (Standard) | Sound (Silent) |
+|---|---|---|---|---|
+| "sos" | 10 B | 1 frame × 186 B | 1 block; ≈4 frames × 99 B expected | 1 block; ≈4 frames × 51 B expected |
+| 100-character text | 107 B | 1 frame × 186 B | 2 blocks; ≈5 frames expected | 5 blocks; ≈9 frames expected |
+| 5 KB photo | ≈5.1 KB | 33 frames × 186 B | not recommended | not recommended |
+| 78 KB video | ≈80 KB | 243 frames × 356 B (+ ≈2 extra) | not supported (over 8 KiB) | not supported |
 
 "Expected" frames for Sound follow the sender's progress target `⌈1.25·K⌉ + 2`. For Light, the receiver needs K plus a couple of repair symbols (see [Fountain Code](../algorithms/FOUNTAIN_CODE.md#7-measured-overhead)).

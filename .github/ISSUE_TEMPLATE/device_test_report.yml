@@ -1,0 +1,88 @@
+name: Device test report
+description: Share how a transfer performed between two real phones, whether it worked or not.
+title: "[Device test]: "
+labels: ["device-test"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Results from real hardware are the most useful feedback this project gets, because simulators can't model every camera, speaker and microphone. The [device test checklist](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/development/TESTING.md#6-device-test-checklist) describes the tests to run.
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Channel
+      options:
+        - Light (animated QR)
+        - Sound (Audible)
+        - Sound (Silent, 18–20 kHz)
+        - Vibration
+    validations:
+      required: true
+  - type: input
+    id: profile
+    attributes:
+      label: Profile
+      placeholder: "For example: Light Auto, Sound Fast, Silent"
+    validations:
+      required: true
+  - type: input
+    id: sender-device
+    attributes:
+      label: Sender phone
+      placeholder: "For example: Pixel 7, Android 15"
+    validations:
+      required: true
+  - type: input
+    id: receiver-device
+    attributes:
+      label: Receiver phone
+      placeholder: "For example: iPhone 13, iOS 18"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version and build type
+      placeholder: "For example: 1.0.0+1 release, commit abc1234"
+    validations:
+      required: true
+  - type: input
+    id: payload
+    attributes:
+      label: Payload
+      description: What you sent, and its on-air size from the Send screen.
+      placeholder: "For example: 5 KB sample photo, 5.2 KB on air"
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Distance and environment
+      placeholder: "For example: 20 cm, office lighting; or 1 m, quiet room"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Received correctly
+        - Received after one or more resumes
+        - Not received
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Transfer time
+      description: From pressing Send to the message appearing, in seconds.
+  - type: textarea
+    id: hud
+    attributes:
+      label: HUD readings
+      description: The receiver's final progress-card numbers. Screenshots are welcome.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else you noticed.

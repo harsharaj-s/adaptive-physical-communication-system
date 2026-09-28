@@ -1,0 +1,97 @@
+name: Bug report
+description: Something doesn't work as the documentation says it should.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Before you start, please check [Troubleshooting](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/operations/TROUBLESHOOTING.md) and [Known Issues](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/project/KNOWN_ISSUES.md).
+
+        **Security problems don't belong here.** Follow the [security policy](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/SECURITY.md) instead.
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Channel
+      description: Which channel were you using?
+      options:
+        - Light (animated QR)
+        - Sound (Audible)
+        - Sound (Silent, 18–20 kHz)
+        - Vibration
+        - Not channel-specific (UI, Gallery, samples, and so on)
+    validations:
+      required: true
+  - type: input
+    id: profile
+    attributes:
+      label: Profile
+      description: The density or speed profile, if any.
+      placeholder: "For example: Light Auto, Sound Standard, Silent Robust"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from the home screen.
+      placeholder: |
+        1. On the sender, tap Send and type "hello".
+        2. Choose Sound, Standard.
+        3. On the receiver, tap Receive, then Sound.
+        4. ...
+    validations:
+      required: true
+  - type: textarea
+    id: hud
+    attributes:
+      label: HUD readings
+      description: What the receiver's progress card showed (for example CAP/DEC/GOOD for Light, or solved blocks and repaired/rejected frames for Sound). Screenshots are welcome.
+  - type: input
+    id: sender-device
+    attributes:
+      label: Sender phone
+      placeholder: "For example: Pixel 7, Android 15"
+    validations:
+      required: true
+  - type: input
+    id: receiver-device
+    attributes:
+      label: Receiver phone
+      placeholder: "For example: Galaxy A54, Android 14"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the About dialog. Both phones must run the same build.
+      placeholder: "For example: 1.0.0+1, commit abc1234"
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build type
+      options:
+        - Release
+        - Debug
+        - Web (Chrome)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Distance between the phones, lighting or room noise, and anything else unusual.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output from `flutter run` or `adb logcat`, if you have it. This is formatted as code automatically.
+      render: shell

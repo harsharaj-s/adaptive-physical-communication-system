@@ -60,8 +60,8 @@ Receiver: envelope bytes ─► ChatPayloadCodec.decodeIncoming ─► ChatMessa
 
 | Input | Resulting payload |
 |---|---|
-| Text only | `text`, envelope name `message.txt`, MIME `text/plain` |
-| Text that looks like a URL (`http://`, `https://`, `www.` or `name.tld`) | `link`, name `link.url`, MIME `text/uri-list`. Adds `https://` if missing |
+| Text only | `text`; the envelope has an empty name and MIME type |
+| Text that looks like a URL (`http://`, `https://`, `www.` or `name.tld`) | `link`, also with an empty name and MIME type. Adds `https://` if missing |
 | Photo from the picker | Compressed immediately (see [§3](#3-photo-compression)), renamed to `.jpg`, MIME `image/jpeg` |
 | Video from the picker | Sent as is, MIME from the extension (`mp4`, `mov`, `webm`) |
 | Sample | Loaded from the asset bundle, file name and MIME from the catalogue |
@@ -110,7 +110,7 @@ Every channel carries the same self-describing envelope:
 | file | 3 | Raw bytes |
 | link | 4 | UTF-8 URL |
 
-Overhead = 7 + name + MIME bytes: 31 bytes total for "sos". The length fields are one byte each, so names and MIME types are limited to 255 bytes. Byte-level details: [Data Formats §2](../architecture/DATA_FORMATS.md).
+Overhead = 7 + name + MIME bytes. Text and links carry no name or MIME type, so "sos" is 10 bytes in total; a photo named `photo.jpg` has 7 + 9 + 10 = 26 bytes of overhead. `ComposePayload.envelopeBytes` computes this size without building the envelope, for the Send screen's on-air figure. The length fields are one byte each, so names and MIME types are limited to 255 bytes. Byte-level details: [Data Formats §2](../architecture/DATA_FORMATS.md).
 
 **Completeness check (`looksComplete`).** Before decoding, the receiver checks that the structure is intact and the payload plausible:
 

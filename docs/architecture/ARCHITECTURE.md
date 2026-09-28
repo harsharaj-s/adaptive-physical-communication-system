@@ -86,7 +86,7 @@ Back to the [documentation index](../README.md).
 | `lib/core/chat/` | `ChatMessage`, `ChatPayloadCodec` | Message model and the APCM envelope (type + name + MIME + bytes), including completeness checks |
 | `lib/core/channels/` | `CommChannel`, `HardwareOpticalChannel`, `HardwareAcousticChannel`, `HardwareVibrationChannel`, web helpers | Uniform channel interface: `initialize`, `start`, `stop`, `discover`, `test`, `transmit`, `receive`, `getMetrics`, `isAvailable`. Hardware channels additionally expose `transmitEnvelope` / `receiveEnvelopes` for the fountain path |
 | `lib/core/physical/fountain/` | `LtEncoder`, `LtDecoder`, `QrFountainFrameCodec`, `buildQrBitmap`, `FountainQrModem` | Light modem: fountain symbols → APCF frames → QR bitmaps; camera frames → decoded envelopes |
-| `lib/core/physical/acoustic/` | `MtFskCodec`, `AcousticFrameSync`, `AcousticFrameCodec`, `ReedSolomon`, `AcousticFountainModem`, `AcousticTxProfile` | Sound modem: fountain symbols → RS-protected frames → multi-tone audio; microphone PCM → frames → envelopes |
+| `lib/core/physical/acoustic/` | `MtFskCodec`, `AcousticFrameSync`, `AcousticFrameCodec`, `ReedSolomon`, `AcousticFountainModem`, `AcousticTxProfile`, `HighPassFilter`, `ToneTimeline`, `SpectrumAnalyzer` | Sound modem: fountain symbols → RS-protected frames → multi-tone audio; microphone PCM → frames → envelopes. Also the tone schedule and FFT behind the live kHz readout |
 | `lib/core/physical/` (root) | `OpticalTxProfile`, `extractQrGrayFrame`, `QrDecodeWorker`, `QrDecodeIsolatePool`, `decodeQrFrame…`, `physical_codecs.dart` | Light profiles and metrics, camera frame extraction, the decode isolate, the zxing2 decode sequence, legacy FSK / vibration codecs, WAV writer |
 | `lib/core/physical/csk/` | `CskOpticalModem` | Legacy colour-shift keying modem |
 | `lib/core/protocol/` | `PacketCodec`, `computeCrc32` | 24-byte packet header + CRC-32 |
@@ -155,7 +155,7 @@ SendTransmitScreen ──► AppController.sendPhysicalMessage(payload, channel)
  │                  (brightness max, wakelock, 12 fps loop until Stop / 10 min cap)
  │          Sound → HardwareAcousticChannel.transmitEnvelope → AcousticFountainModem.transmit
  │                  (mic off, bursts of 2–4 frames as WAV until Stop / symbol budget)
- │        status → Light: "sent"   Sound: "delivered"
+ │        status → "sent" (no return path), or "failed"
  │  7. otherwise (Vibration, big Sound): runHardwareTransfer → TransferManager
  │        status → "delivered" if the transfer succeeded, else "failed"
  ▼
@@ -194,10 +194,15 @@ Inside the Light modem (camera callback, ~30 fps):
              → complete → APCM check → de-dup by CRC-32 → envelope buffer
 
 Inside the Sound modem (mic callback, PCM16 44.1 kHz):
-  PCM16 → float → AcousticFrameSync per profile (all 4 until locked)
+  PCM16 → float → AcousticFrameSync per profile (all 6 until locked; Silent ones high-pass at 16 kHz first)
         → marker search (64-sample steps, leading edge) → fine alignment
         → Goertzel soft demod → RS decode (+GMD) → CRC-16 → LtDecoder(session)
         → complete → de-dup by CRC-32 → envelope buffer → reopen to all profiles
+  PCM16 → float → SpectrumAnalyzer ring ──(every 80 ms UI tick)──► FFT → acousticSpectrumState.rx → Hearing now
+
+Sender readout:
+  _renderBurst → MtFskCodec.describe → ToneTimeline ─► onBurst ─► _playWav: play() returns
+        → acousticSpectrumState.startTxBurst → LiveToneMeter polls txNow() every 50 ms → Sending now
 ```
 
 ---
@@ -213,6 +218,8 @@ Inside the Sound modem (mic callback, PCM16 44.1 kHz):
 | Light TX loop | `FountainQrModem.transmit` | `max(40, round(1000/fps))` ms per frame | Show a symbol, build the next, sleep the remainder |
 | Sound TX loop | `AcousticFountainModem.transmit` | bursts of `max(2, min(4, K))` frames | Hand WAV clips to the player; `await play()` paces the loop |
 | Microphone stream | `HardwareAcousticChannel` (`record`) | continuous PCM16 | Fed straight into frame sync; buffers are compacted after each probe |
+| Receiver UI throttle | `HardwareAcousticChannel._updateRxUi` | at most one update per 80 ms | Meters, phase, and the one FFT behind **Hearing now** |
+| Sender readout tick | `LiveToneMeter` | 50 ms `Timer.periodic`, only while a burst plays | Looks up the tone on air in the burst's `ToneTimeline` |
 | Accelerometer stream | `HardwareVibrationChannel` | platform rate | Pulse timing |
 
 **Why dropping frames is safe.** With a fountain code every symbol is equally valuable, so skipping a camera frame while the isolate is busy costs nothing but a moment. The alternative, queuing, would add latency and memory with no gain.
@@ -243,7 +250,8 @@ lib/
 │   ├── physical/
 │   │   ├── fountain/                       lt_codec, qr_fountain_frame, qr_bitmap, fountain_qr_modem
 │   │   ├── acoustic/                       mt_fsk_codec, acoustic_frame_sync, acoustic_fountain_frame,
-│   │   │                                   reed_solomon, acoustic_fountain_modem, acoustic_tx_profile
+│   │   │                                   reed_solomon, acoustic_fountain_modem, acoustic_tx_profile,
+│   │   │                                   biquad_filter, tone_timeline, spectrum_analyzer
 │   │   ├── csk/csk_optical_modem.dart      Legacy CSK modem
 │   │   ├── optical_tx_profile.dart         Light profiles, Auto rule, metrics
 │   │   ├── qr_gray_frame.dart              Y-plane crop
@@ -264,7 +272,7 @@ lib/
     ├── screens/                            home, send_compose, send_transmit, receive, dev_menu,
     │                                       simulation, hardware, transfer, performance
     ├── theme/app_layout.dart               Responsive layout helpers
-    └── widgets/                            qr_bitmap_view, HUDs, overlays, content view, panels
+    └── widgets/                            qr_bitmap_view, HUDs, live_tone_meter, overlays, content view, panels
 ```
 
 ---
@@ -272,7 +280,7 @@ lib/
 ## 9. State management
 
 - **One controller.** `AppController extends ChangeNotifier` is created once by `AppProvider` in `main.dart`. `AppProvider` is a `StatefulWidget` that owns the controller, wraps a `ListenableBuilder` around it, and republishes it through a private `InheritedWidget` (`_InheritedApp`, `updateShouldNotify → true`) on every `notifyListeners()`. Screens read it with `AppProvider.of(context)`.
-- **High-frequency notifiers.** Values that change many times per second live in singletons such as `opticalTransmitterState` (current QR bitmap, fountain session), the optical metrics notifier (HUD), `acousticReceiverState` / `acousticTransmitterState` (levels, phases, progress) and `vibrationTransmitterState`. Only the widgets that display them listen.
+- **High-frequency notifiers.** Values that change many times per second live in singletons such as `opticalTransmitterState` (current QR bitmap, fountain session), the optical metrics notifier (HUD), `acousticReceiverState` / `acousticTransmitterState` (levels, phases, progress), `acousticSpectrumState` (the tones on air and the microphone spectrum for the live kHz readout) and `vibrationTransmitterState`. Only the widgets that display them listen.
 - **Gallery state.** `GallerySaver.instance` is its own `ChangeNotifier`. The Save button listens only to it.
 - **Full-screen QR overlay.** `MaterialApp.builder` in `main.dart` stacks `OpticalActiveOverlay` above the navigator. While a Light transmission is active it shows the full-screen fountain QR (`OpticalFountainQrOverlay`), so the code stays visible no matter which route started the transmission.
 

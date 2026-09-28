@@ -6,6 +6,18 @@ Back to the [documentation index](../README.md).
 
 ---
 
+## Contents
+
+1. [The one-sentence pitch](#1-the-one-sentence-pitch)
+2. [Preparation (the day before)](#2-preparation-the-day-before)
+3. [The demo sequence (about 5 minutes)](#3-the-demo-sequence-about-5-minutes)
+4. [Talking points while a transfer runs](#4-talking-points-while-a-transfer-runs)
+5. [Recovery plan: if something goes wrong](#5-recovery-plan-if-something-goes-wrong)
+6. [Expected timings (from the app's formulas)](#6-expected-timings-from-the-apps-formulas)
+7. [Five-minute Q&A cheat sheet](#7-five-minute-qa-cheat-sheet)
+
+---
+
 ## 1. The one-sentence pitch
 
 > "These two phones have Wi-Fi, Bluetooth and mobile data switched off. We're going to send a photo and a narrated video from one to the other using nothing but the screen and the camera, then a message using only sound."
@@ -73,6 +85,8 @@ Turn on Airplane mode on both phones and show it.
 2. **Receiver:** Receive → **Sound**. Allow the microphone if asked. Hold the phones 20–50 cm apart, speaker facing the microphone.
 3. The receiver shows "Receiving over sound · Standard" and the text appears after about 10 s.
 4. Point out that the receiver **detected the speed profile by itself**.
+5. Hold the two screens side by side. The sender's **Sending now** and the receiver's **Hearing now** show the same kHz, live.
+6. **Silent encore (optional, 20 s):** resend **Meet at gate 3** on **Silent**. The room hears nothing, yet both readouts show about 18.5–19.9 kHz. That's the proof the data is really going through the air.
 
 ### Step 5 (optional): Vibration (60 s+)
 
@@ -122,6 +136,7 @@ Home → ⋮ → Developer tools → **Simulation Lab** → scenario *optical-de
 | Counter stops at "x / K" | Keep holding. If the sender stopped, tap **Resume streaming** | "Nothing is lost. The receiver keeps every piece it has." |
 | Sound: "too damaged" rising | Volume up, speaker towards the mic, move closer, or resend on **Rugged** | "The room is loud, so I'll use the robust profile." |
 | Sound: nothing at all | Tap **Enable microphone**; check that the tone meter moves while the sender plays | |
+| Silent: the *Silent band 18–20 kHz* meter stays flat | Media volume to max on the sender; swap the phones' roles; otherwise switch the sender to **Audible** | "Not every phone speaker reaches 19 kHz. The audible band always works." |
 | Video won't play on an iPhone | Use an **MP4** sample (iOS doesn't play WebM) | |
 | Something is truly broken | Switch to the Simulation Lab and explain the design there | "Here's the same pipeline under a simulated channel." |
 
@@ -133,8 +148,9 @@ Home → ⋮ → Developer tools → **Simulation Lab** → scenario *optical-de
 
 | Transfer | Channel / profile | Pieces (K) | Expected time |
 |---|---|---|---|
-| "Hello from sound!" (45 B) | Sound / Standard | 1 | ≈10 s |
-| "sos" (31 B) | Sound / Rugged | 1 | ≈12 s |
+| "Hello from sound!" (24 B) | Sound / Standard | 1 | ≈10 s (2.4 s if the first frame lands) |
+| "sos" (10 B) | Sound / Rugged | 1 | ≈12 s (3 s if the first frame lands) |
+| "Meet at gate 3" (21 B) | Sound / **Silent** (inaudible) | 1 | ≈19 s (4.8 s if the first frame lands) |
 | 2 KB sample photo (≈3.4 KB after re-encode) | Light / Auto (160 B) | 21–22 | ≈3 s |
 | 5 KB sample photo (≈8.6 KB) | Light / Auto (240 B) | 36–37 | ≈5 s |
 | 10 KB sample photo (≈16–18 KB) | Light / Auto (330 B) | 50–55 | ≈8–9 s |
@@ -153,7 +169,11 @@ Derivations: [Calculations](../algorithms/CALCULATIONS.md). Photos are re-compre
 | Is it encrypted? | Not yet. Anyone who can see the screen or hear the sound could decode it. See [Security](../operations/SECURITY.md). |
 | How far does it work? | Light: 15–25 cm. Sound: across a table, up to a couple of metres in a quiet room. Vibration: touching. |
 | Why not just use Bluetooth? | The point is communication with no radio at all: air-gapped, radio-silent or emergency situations, and one-to-many broadcast with no pairing. |
-| How fast is it? | Light: about 1.3–2.5 KB/s in practice. Sound: 11–36 bytes per second. |
+| How fast is it? | Light: about 1.3–2.5 KB/s in practice. Sound: 11–36 bytes per second audible, 3.4–5 bytes per second silent. |
+| Why can't I hear the Silent mode? | It plays one tone at a time at 18.3–19.9 kHz, above most adults' hearing and above nearly all room noise. Same error correction and fountain code as the audible band. See [Sound Channel §14](../channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic). |
+| Why FSK and not ASK or PSK? | Loudness (ASK) changes with distance and echoes, and phase (PSK) is scrambled by echoes, hand movement and the two phones' unsynchronised clocks. Frequency survives all of that, so the receiver only picks the loudest of 16 tones. See [ADR-10](../architecture/DESIGN_DECISIONS.md#adr-10-multi-tone-fsk-for-sound). |
+| How many ms per bit? | Each tone carries 4 bits. Standard plays 8 tones for 93 ms: 2.9 ms per bit raw, 4.6 ms per bit after error correction. Silent plays one tone for 46 ms: 11.6 ms per bit raw, about 25 ms after error correction. |
+| Can we see the frequencies? | Yes: **Sending now** on the sender and **Hearing now** on the receiver, in kHz, with a spectrum strip. |
 | What if frames are lost? | The fountain code makes lost frames irrelevant. Only the number of good frames matters. |
 | Can many phones receive? | Yes, for Light and Sound. Every receiver finishes independently. |
 | What is the adaptive part? | The engine scores channels on throughput, reliability, latency, confidence and stability, and switches with hysteresis. See [Adaptive Engine](../algorithms/ADAPTIVE_ENGINE.md). |

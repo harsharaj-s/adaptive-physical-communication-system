@@ -6,6 +6,17 @@ Back to the [documentation index](../README.md).
 
 ---
 
+## Contents
+
+- [Summary](#summary)
+1. [APCS1 text QR](#1-apcs1-text-qr-libcorephysicalqr_optical_codecdart)
+2. [CSK: colour-shift keying](#2-csk-colour-shift-keying-libcorephysicalcskcsk_optical_modemdart-optical_csk_codecdart-optical_csk_samplerdart)
+3. [On/off light keying](#3-onoff-light-keying-opticalbitcodec-in-physical_codecsdart)
+4. [Two-tone FSK](#4-two-tone-fsk-fskcodec-fskstreamdecoder-goertzeldetector-in-physical_codecsdart)
+5. [Evolution timeline](#5-evolution-timeline)
+
+---
+
 ## Summary
 
 | Modem | Medium | Rate | Status | Replaced by |
@@ -111,7 +122,7 @@ v3  APCF v3: cycled/dense/sparse LT + exact GF(2) decoder;           │
      Auto density 160/240/330 B; 12 fps; camera tuning               │
                                                                      ▼
                                                MT-FSK + Reed-Solomon + LT fountain,
-                                               4 profiles, auto-detect, leading-edge sync
+                                               6 profiles (4 audible, 2 Silent), auto-detect
 ```
 
 See [Changelog](../project/CHANGELOG.md) and [Design Decisions](../architecture/DESIGN_DECISIONS.md).

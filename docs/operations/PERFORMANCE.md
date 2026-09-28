@@ -29,6 +29,7 @@ Back to the [documentation index](../README.md).
 | Light, Safe (v8, 8 fps) | 1.28 KB/s | ≈0.9 KB/s | Weak cameras |
 | Light, Fast (v17, 12 fps) | 7.2 KB/s | ≈2.5 KB/s *if* the camera keeps up | Good cameras only |
 | Sound, Rugged / Safe / Standard / Fast | 10.8 / 18.1 / 27.0 / 35.8 B/s | ≈80% of nominal after fountain overhead | 0.3–2 m |
+| Sound, Silent Robust / Silent (inaudible) | 3.4 / 5.0 B/s | ≈80% of nominal | 0.1–0.5 m, phone-dependent |
 | Vibration | ≈0.52 B/s raw | Less, after packet overhead | Touching |
 
 Light is about 35–70× faster than the fastest Sound profile. That's why photos and videos go by Light.
@@ -51,14 +52,16 @@ Light is about 35–70× faster than the fastest Sound profile. That's why photo
 
 **Sound:**
 
-| Payload | Rugged | Safe | Standard | Fast |
-|---|---|---|---|---|
-| "sos" (31 B) | 11.9 s | 10.6 s | 9.5 s | 7.2 s |
-| 100-character text (≈128 B) | 20.8 s | 15.9 s | 11.8 s | 8.9 s |
-| 500 B | 65 s | 42 s | 28 s | 21 s |
-| 2 KB photo sample (3.4 KB) | ≈6.7 min | ≈4.0 min | ≈2.8 min | ≈2.1 min |
+| Payload | Rugged | Safe | Standard | Fast | Silent | Silent Robust |
+|---|---|---|---|---|---|---|
+| "sos" (10 B) | 11.9 s | 10.6 s | 9.5 s | 7.2 s | 19.1 s | 28.6 s |
+| 100-character text (107 B) | 20.8 s | 15.9 s | 11.8 s | 8.9 s | 43 s | 64 s |
+| 500 B | 65 s | 42 s | 28 s | 21 s | 2.3 min | 3.5 min |
+| 2 KB photo sample (3.4 KB) | ≈6.7 min | ≈4.0 min | ≈2.8 min | ≈2.1 min | too slow | too slow |
 
-**Vibration:** "hi" ≈113 s, "hello" ≈119 s, a full 48-byte packet ≈148 s.
+These are the expected times (`⌈1.25·K⌉ + 2` frames). When every frame lands, a receiver finishes after exactly K frames: "sos" is one frame, 2.4 s on Standard and 4.8 s on Silent.
+
+**Vibration:** "hi" ≈73 s, "hello" ≈79 s, a full 48-byte packet ≈148 s.
 
 ---
 
@@ -109,6 +112,9 @@ per burst: 120 ms of lead silence, then 2–4 frames back-to-back
 | LT decoding | UI isolate | Incremental: each symbol costs at most about K × K/32 word XORs (≈41 000 for K = 422), well under a millisecond |
 | Audio capture and conversion | Plugin thread → Dart | PCM16 converted straight into a `Float32List` (no per-sample boxing) |
 | Tone detection and RS decoding | Dart isolate (UI) | Goertzel on the needed bins only; RS is `O(n·P)` per frame |
+| Live frequency readout, receiver | Dart isolate (UI) | Each mic chunk is only copied into a 1024-sample ring. The FFT (1024 points, precomputed twiddles and window, about 5 000 butterflies) runs only when the 80 ms UI throttle fires, so at most 12.5 times a second |
+| Live frequency readout, sender | UI isolate | No audio analysis: the tone schedule is written while the burst is rendered (a few hundred segments), and each 50 ms tick is a binary search. The timer runs only while a burst is playing |
+| Frequent UI updates | UI isolate | The readout has its own `acousticSpectrumState` notifier, so only its card rebuilds, not the screen |
 | Timers | UI isolate | 80 ms receive poll, 500 ms metrics tick, 1 800 ms idle timer |
 
 Frames are **dropped, not queued**, when the decoder is busy. Queueing would add latency and memory without adding information, because the fountain only needs *some* frames, not *all* frames.
@@ -161,7 +167,7 @@ From the test suite ([Testing](../development/TESTING.md)):
 | Old 800-byte density, hard camera | 0 frames decoded in 20 s |
 | 40 KB photo / 30 KB video through real QR + zxing2 + LT at 30% loss | Byte-exact |
 | Fountain overhead (measured mean) | 0–2.2 symbols |
-| Full test suite | 88 tests, ≈38 s |
+| Full test suite | 101 tests (100 run, 1 skipped), ≈39 s |
 | Full optical density sweep (`OPTICAL_SWEEP=1`) | ≈3 min 16 s |
 
 ---

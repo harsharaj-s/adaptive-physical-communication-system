@@ -1,7 +1,7 @@
 # Signal Processing
 
 The signal-processing theory behind the three channels:
-- **Sound:** Goertzel detection, why exact-bin tones are orthogonal, the sync marker score, processing gain, clock drift and reverberation.
+- **Sound:** Goertzel detection, why exact-bin tones are orthogonal, the sync marker score, processing gain, clock drift, reverberation, and the FFT behind the live frequency readout.
 - **Light:** sampling a QR code through a camera, blur and pixels per module, screen–camera timing, luminance and binarization.
 - **Vibration:** baseline tracking.
 
@@ -26,6 +26,7 @@ Back to the [documentation index](../README.md).
 11. [Screen–camera timing](#11-screencamera-timing)
 12. [Luminance and binarization](#12-luminance-and-binarization)
 13. [Vibration: baseline tracking](#13-vibration-baseline-tracking)
+14. [Live spectrum: FFT for the readout](#14-live-spectrum-fft-for-the-readout)
 
 ---
 
@@ -42,7 +43,7 @@ s[n]   = x[n] + coeff·s[n−1] − s[n−2]          n = 0 … L−1,  s[−1] 
 
 The code divides by L (`MtFskCodec._power`), which normalises for block length.
 
-**Why not an FFT?** An FFT of 1 024 points gives all 512 bins in O(N log N) ≈ 10 000 butterfly operations. The demodulator needs only 16·G = 96 or 128 bins, and the marker hunt needs just 2 (bins 28 and 36). Goertzel costs one multiply-add per sample per bin and needs no windowing or buffering, so for the marker hunt it is about 100× cheaper than an FFT.
+**Why not an FFT?** An FFT of 1 024 points gives all 512 bins in O(N log N) ≈ 10 000 butterfly operations. The demodulator needs only 16·G = 96 or 128 bins, and the marker hunt needs just 2 (bins 28 and 36). Goertzel costs one multiply-add per sample per bin and needs no windowing or buffering, so for the marker hunt it is about 100× cheaper than an FFT. The one place the app does use an FFT is the live **Hearing now** readout, which needs every bin, and it runs at most once per 80 ms UI tick ([§14](#14-live-spectrum-fft-for-the-readout)).
 
 **Derivation.** The filter's transfer function H(z) = 1 / (1 − 2cos ω·z⁻¹ + z⁻²) has poles at e^{±jω}. Running L samples and then applying the FIR step y = s1 − e^{−jω} s2 gives y = e^{jω(L−1)}·X_k, whose squared magnitude expands to the formula above.
 
@@ -70,13 +71,15 @@ A symbol lasts F blocks (L = F·N samples). A tone at bin k of N is bin F·k of 
 
 **The price of exact bins:** tone spacing is fixed at f_s/N = 43.066 Hz. The 16 tones of a group span 16 × 43 = 689 Hz, and 8 groups plus 2 sync tones cover about 1.2–7.2 kHz.
 
+**Silent band.** The Silent profiles use every second bin from 431 (18 562–19 854 Hz, 86.1 Hz apart). Any whole-bin spacing stays orthogonal; the wider spacing buys tolerance to Doppler, because a phone moving at 0.3 m/s shifts 19 kHz by about 17 Hz, which would bleed into a neighbour 43 Hz away. Only one tone plays at a time: a small speaker's non-linearity turns two tones f₁ and f₂ into an audible difference tone at f₁ − f₂.
+
 ---
 
 ## 3. Phase continuity and clicks
 
 Each symbol's tones start at phase 0 (`sin(step·i)` with i restarting at 0). A tone at bin k completes exactly k·F cycles in the symbol, so it ends at phase 2πkF ≡ 0. The next symbol, whatever its tones, therefore starts from the same phase state. Any tone that continues doesn't jump at all, and new tones start from zero amplitude-weighted phase.
 
-An abrupt phase jump is a broadband click, which spreads energy across every bin and raises the noise floor for all groups. Exact bins avoid this without needing windowing or ramps.
+An abrupt phase jump is a broadband click, which spreads energy across every bin and raises the noise floor for all groups. Exact bins avoid this between symbols without needing windowing or ramps. The start and end of a whole burst are different: the waveform jumps from and to silence there. Each burst therefore gets 256-sample (5.8 ms) raised-cosine fades at both ends and a 40 ms silent tail. That matters most for Silent profiles, where an edge click would be the only audible part.
 
 ---
 
@@ -97,6 +100,10 @@ So coherent integration over a symbol gives a processing gain of **10·log₁₀
 | Fast | 3 072 | 31.9 dB |
 | Standard / Safe | 4 096 | 33.1 dB |
 | Rugged | 6 144 | 34.9 dB |
+| Silent (after the 1 024-sample guard) | 1 024 | 27.1 dB |
+| Silent Robust (after the guard) | 2 048 | 30.1 dB |
+
+Silent profiles discard the first frame of each symbol (the **guard**), so reflections of the previous tone, which at 19 kHz can arrive 20–30 ms late with little loss, don't contaminate the decision. The shorter window costs gain, which the single tone recovers in level: 0.8 against Standard's 0.1225 per tone is 16.3 dB more.
 
 This is why tones remain decodable when the per-sample SNR is well below 0 dB. In the "hostile" simulation (2 dB broadband SNR shared across 6–8 tones plus heavy roll-off), each tone's per-sample SNR is strongly negative, yet Rugged still delivers.
 
@@ -132,6 +139,8 @@ The score is **independent of amplitude A** (volume) and scales with N, so it me
 
 **Why the minimum of two halves.** Consider a window covering the *last* 1 024 samples of the marker plus 1 024 samples of silence. Its full-window score is the tone power over 1 024 samples, normalised by energy that is also from those same 1 024 samples, so it scores as high as an aligned window. With the two-half rule, the silent half has E ≈ 0 (scores 0) or pure noise (scores about 1), so the minimum is low. Only a window whose **both** halves are marker, i.e. exactly aligned (within the search step), scores high.
 
+**Silent marker.** The Silent marker plays bin 424 alone in the first half and bin 427 alone in the second, so it never sounds two tones at once. Each half scores `1 · P / E` for its own tone: with x = A sin(ωn), P = A²N/4 and E = A²/2, again **512**. The general rule in code is `(tones in the half) · weakest power / E`, which covers both styles with one threshold. Silent frame-syncs high-pass the audio at 16 kHz (4th-order Butterworth) before scoring. Otherwise a talker's energy at 0–5 kHz would sit in E and pull an 18 kHz marker's score below 8 even though the voice never touches the marker's bins.
+
 ---
 
 ## 6. Leading-edge detection and multipath
@@ -163,7 +172,7 @@ Because every frame is re-synchronised on its own marker, drift never accumulate
 
 **Frequency offset:** Δf = f·δ·10⁻⁶. At 7.2 kHz and 400 ppm that's 2.9 Hz, about 6.7% of a bin (43 Hz). It causes slight leakage (a few percent of power) but doesn't change which tone wins.
 
-The room simulator tests 50, 200 and 400 ppm (via linear resampling).
+The room simulator tests 50, 200 and 400 ppm (via cubic resampling), plus a ±500 ppm hand wobble at about 1 Hz for the Silent band.
 
 ---
 
@@ -271,3 +280,46 @@ b[n] = (1 − α)·b[n−1] + α·m[n],     α = 0.08
 Its step response reaches 63% after 1/α ≈ 12.5 samples. The update is **frozen while a pulse is active**, so a long buzz doesn't drag the baseline up and cut its own measured length short.
 
 A pulse is active while |m − b| ≥ 1.4 m/s² (`relativeThreshold`). Its duration is classified against the 130 ms midpoint between the 80 ms and 180 ms nominal pulses, and pulses under 25 ms are discarded as knocks.
+
+---
+
+## 14. Live spectrum: FFT for the readout
+
+`SpectrumAnalyzer` (`lib/core/physical/acoustic/spectrum_analyzer.dart`) turns the latest microphone audio into the **Hearing now** frequency and the spectrum strip. It never takes part in decoding.
+
+**Window and transform.** The last N = 1 024 samples (23.2 ms at 44.1 kHz) are multiplied by a Hann window and passed through an in-place radix-2 FFT. Bit reversal is followed by log₂N = 10 butterfly stages of N/2 butterflies each (5 120 in total), using precomputed twiddle factors.
+
+```
+w[n]   = 0.5 − 0.5·cos(2πn / (N − 1))
+P_k    = |X_k|² / (N/4)²                  k = 0 … N/2 − 1
+level  = 10·log₁₀ P_k   dBFS
+```
+
+A Hann window's coherent gain is 0.5, so a full-scale sine centred on a bin reaches |X_k| = N/4. Dividing by (N/4)² therefore makes that sine read **0 dBFS**. The bins are 44 100 / 1 024 = **43.07 Hz** apart, the modem's own tone grid.
+
+**Why a Hann window.** Without a window, a tone between two bins leaks into the whole spectrum, with sidelobes only 13 dB down. With Hann the first sidelobe is about 31 dB down and the rest fall off quickly. The main lobe is 4 bins wide. That is why peaks within 4 bins of a stronger one are treated as leakage.
+
+**Picking tones.** Only bins from 500 Hz to 21 kHz are considered, which is about 476 bins.
+1. **Noise floor.** The floor is the **median** bin power in that range. A few tones occupy a handful of bins, so they barely move the median, whereas a mean would be dragged up by them.
+2. **Candidates.** A bin is a candidate if it is a local maximum (`P[k−1] < P[k] ≥ P[k+1]`), at least 18 dB above the floor, and at or above −85 dBFS.
+3. **Selection.** Candidates are taken strongest first, up to 8. Any within 4 bins of one already kept, or more than 35 dB below the strongest, are dropped.
+
+**Sub-bin accuracy.** A parabola through the dB values a, b and c of bins k−1, k and k+1 places the true peak at
+
+```
+δ = ½·(a − c) / (a − 2b + c),   −½ ≤ δ ≤ ½
+f = (k + δ)·43.07 Hz
+```
+
+This turns 43 Hz bins into a readout good to a few hertz. The test suite places a pure 18 906 Hz tone within 8 Hz and each tone of a four-tone chord within 12 Hz.
+
+**What it can and can't separate.**
+- **Silent tones** are 86 Hz (2 bins) apart, but only one plays at a time, so each is read cleanly.
+- **Audible chords** can put tones from neighbouring groups 1 bin apart. Those merge into one reported peak, while the sender's readout still lists every tone.
+- **Window length.** A 23.2 ms window can straddle two symbols. Silent symbols are 46–70 ms long, so the readout mostly sees one tone and occasionally sees two for a moment.
+
+**Spectrum strip.** 96 equal bands of 11 025 / 48 ≈ 230 Hz (5.33 bins each) show the loudest bin in each band, mapped linearly from −100…−20 dBFS onto 0…1.
+
+**Cost.** `add` only copies samples into the ring. The FFT runs when the channel's 80 ms UI throttle fires, so at most 12.5 times per second: about 64 000 butterflies per second, negligible next to the Goertzel demodulators that run on every sample.
+
+**Sender side.** No signal processing is involved. `MtFskCodec.describe` lists the tones of each marker half and symbol while the burst is rendered, so **Sending now** is exact by construction.

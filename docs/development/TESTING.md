@@ -57,11 +57,11 @@ The test only checks the value against `null`, so any value, including `"0"`, en
 
 | Item | Value |
 |---|---|
-| Date | 2026-09-27 |
+| Date | 2026-09-28 |
 | Toolchain | Flutter 3.41.1, Dart 3.11.0, Windows 10.0.26200 |
-| Test files | 21 (plus 2 helper files that contain no tests) |
-| Tests declared | 88 |
-| Passed | 87 |
+| Test files | 22 (plus 2 helper files that contain no tests) |
+| Tests declared | 101 (88 before the Silent sound band, 94 before the live frequency readout) |
+| Passed | 100 |
 | Skipped | 1 (`full density table`, needs `OPTICAL_SWEEP`) |
 | Failed | 0 |
 | Final line | `All tests passed!` |
@@ -78,8 +78,9 @@ Counts come from the JSON reporter of the run above. The runner executes every f
 
 | File | What it covers | Tests |
 |---|---|---|
-| `acoustic_channel_test.dart` | Sound profiles (Rugged, Safe, Standard, Fast) through the room simulator at frame-sync level: rates, per-scenario frame recovery, full transfers in `room`, `noisy room` and `hostile` | 7 |
-| `acoustic_modem_test.dart` | The complete `AcousticFountainModem` loop (WAV out, room, PCM16 in), rateless stopping, profile auto-detection, fixed-profile receivers, profile switching, PCM16 conversion | 8 |
+| `acoustic_channel_test.dart` | Sound profiles through the room simulator at frame-sync level: rates, per-scenario frame recovery, full transfers in `room`, `noisy room` and `hostile`, per-band ladders; Silent band plan, energy below 16 kHz, transfers in every near-ultrasonic scenario, odd-group byte packing | 12 |
+| `acoustic_live_tone_test.dart` | The live frequency readout: `ToneTimeline` matches `MtFskCodec.encode` sample for sample in all six profiles; silence merging and time lookup; `onBurst` timelines match every Standard and Silent WAV burst, with the right tone count per segment; `SpectrumAnalyzer` places a pure 18 906 Hz tone within 8 Hz, resolves a four-tone chord, and stays empty on silence and after `reset` | 7 |
+| `acoustic_modem_test.dart` | The complete `AcousticFountainModem` loop (WAV out, room, PCM16 in), rateless stopping, profile auto-detection across both bands, fixed-profile receivers, profile switching, a Silent hand-held loopback, PCM16 conversion | 9 |
 | `adaptive_engine_test.dart` | `AdaptiveDecisionEngine`: best-channel selection, switch hysteresis, degradation threshold | 3 |
 | `broadcast_mode_test.dart` | Broadcast is the hardware default; `ReliableTransport` sends without ACKs in broadcast mode and de-duplicates received sequence numbers | 3 |
 | `fountain_benchmark_test.dart` | LT recovery of a 365 KiB file on the Standard Light profile with erasures, decode speed, and the optical `slower` ladder | 2 |
@@ -99,7 +100,7 @@ Counts come from the JSON reporter of the run above. The runner executes every f
 | `simulation_integration_test.dart` | Three Simulation Lab scenarios end to end through `SimulationOrchestrator` | 3 |
 | `state_machine_test.dart` | `TransferStateMachine` legal path and illegal transition | 2 |
 | `widget_test.dart` | The home screen renders Send and Receive | 1 |
-| **Total** | | **88** (87 run, 1 skipped) |
+| **Total** | | **101** (100 run, 1 skipped) |
 
 Two files in `test/` are helpers and contain no tests:
 
@@ -221,19 +222,24 @@ With 16 frames per cell, one frame is 6.25 percentage points, so small non-monot
 
 ### 3.4 Acoustic modem and room simulator
 
-See [SOUND_CHANNEL.md](../channels/SOUND_CHANNEL.md) for the channel design. Both Sound test files feed audio to the receiver in 2048-sample chunks, so the streaming path is what gets tested.
+See [SOUND_CHANNEL.md](../channels/SOUND_CHANNEL.md) for the channel design. Both Sound transfer test files feed audio to the receiver in 2048-sample chunks, so the streaming path is what gets tested.
 
-**`acoustic_channel_test.dart` (7 tests)** works at frame-sync level: it wraps LT symbols in acoustic fountain frames (`AcousticFrame`), modulates them with each profile's codec, passes them through `simulateAcoustic`, and feeds `AcousticFrameSync`. Its `runTransfer` helper sends bursts of 2 frames until the LT decoder completes or a symbol budget of `ceil(K × symbolBudget) + 24` is reached (default `symbolBudget` 3.0).
+**`acoustic_channel_test.dart` (12 tests)** works at frame-sync level: it wraps LT symbols in acoustic fountain frames (`AcousticFrame`), modulates them with each profile's codec, passes them through `simulateAcoustic`, and feeds `AcousticFrameSync`. Its `runTransfer` helper sends bursts of 2 frames until the LT decoder completes or a symbol budget of `ceil(K × symbolBudget) + 24` is reached (default `symbolBudget` 3.0).
 
 | Test | What it checks |
 |---|---|
-| *advertised rates and frame geometry* | Every profile's net rate is above 7.0 B/s. |
-| *frame recovery rate per scenario* | Prints frames recovered out of 16 for each profile in `easy`, `room` and `noisy room` (seed 9). It asserts nothing. |
+| *advertised rates and frame geometry* | Every audible profile's net rate is above 7.0 B/s, every Silent one above 3.0 B/s. |
+| *frame recovery rate per scenario* | Prints frames recovered out of 16 for each audible profile in `easy`, `room` and `noisy room` (seed 9). It asserts nothing. |
 | *text message arrives in a normal room* | A text envelope on Standard in `room`. |
-| *every profile recovers a payload in a normal room* | A 415-byte envelope on every profile in `room`, seed 17. |
+| *every audible profile recovers a payload in a normal room* | A 415-byte envelope on every audible profile in `room`, seed 17. |
 | *safe profile still works in a noisy room* | Safe in `noisy room`, seed 23, `symbolBudget` 6. |
 | *rugged profile carries a message through a hostile room* | The text `sos` on Rugged in `hostile`, seed 5, `symbolBudget` 20. |
-| *the ladder is ordered slowest to fastest* | Each profile in `AcousticTxProfile.values` is strictly faster than the previous one, `faster.slower == slower`, and `rugged.slower == rugged`. |
+| *each band's ladder is ordered slowest to fastest* | Within `AcousticTxProfile.forBand(band)` each profile is strictly faster than the previous one, `faster.slower == slower`, and the slowest is its own `slower`. |
+| *every tone stays inside 18–20 kHz* | Silent codecs' lowest and highest frequencies, sync included, lie inside 18–20 kHz; Standard's top is below 7.3 kHz. |
+| *a burst puts almost no energy where people hear* | A faded Silent burst's energy below 16 kHz, from a Hann-windowed DFT misaligned with the symbols, is under −40 dB (printed: −59.9 dB). |
+| *a text arrives in every near-ultrasonic scenario* | "Meet at gate 3" (21 B, one Silent frame) on Silent in `ultra desk`, `ultra hand`, `chatter` and `crowd`, seed 7. |
+| *silent robust carries a longer message through a crowd* | A 59-byte text on Silent Robust in `crowd`, seed 13. |
+| *odd tone counts pack bytes across symbols losslessly* | A 51-byte codeword on the one-tone Silent codec takes 102 symbols, decodes exactly with every byte's reliability above 0.9, and its marker scores above 400. |
 
 Profile geometry printed in the latest run:
 
@@ -243,34 +249,50 @@ Profile geometry printed in the latest run:
 | Safe | 6 × 4 | 93 ms | 48 B | 24 B (12) | 2.65 s | 18.1 B/s |
 | Standard | 8 × 4 | 93 ms | 64 B | 24 B (12) | 2.37 s | 27.0 B/s |
 | Fast | 8 × 3 | 70 ms | 64 B | 24 B (12) | 1.79 s | 35.8 B/s |
+| Silent Robust | 1 × 3 | 70 ms | 24 B | 16 B (8) | 7.15 s | 3.4 B/s |
+| Silent | 1 × 2 | 46 ms | 24 B | 16 B (8) | 4.78 s | 5.0 B/s |
 
-Transfer results printed in the latest run:
+Transfer results printed in the latest run (2026-09-28). Text envelopes are now 7 bytes plus the text, and the room simulator now resamples with cubic rather than linear interpolation, so several rows changed from the 2026-09-27 run:
 
 | Measurement | Result |
 |---|---|
 | Frames recovered of 16, Rugged | easy 16, room 12, noisy room 16 |
-| Frames recovered of 16, Safe | easy 16, room 12, noisy room 16 |
-| Frames recovered of 16, Standard | easy 16, room 12, noisy room 6 |
+| Frames recovered of 16, Safe | easy 16, room 13, noisy room 16 |
+| Frames recovered of 16, Standard | easy 16, room 12, noisy room 7 |
 | Frames recovered of 16, Fast | easy 16, room 1, noisy room 0 |
-| Text on Standard, `room` | 102 B in 4.7 s (21.5 B/s) |
+| Text on Standard, `room` | 81 B in 4.7 s (17.1 B/s) |
 | 415 B in `room` | Rugged 41.6 s (10.0 B/s), Safe 26.5 s (15.7 B/s), Standard 18.9 s (21.9 B/s), Fast 14.3 s (29.0 B/s) |
-| Safe, `noisy room` | 47 B in 5.3 s |
-| Rugged, `hostile` | 31 B in 41.6 s |
+| Safe, `noisy room` | 26 B in 5.3 s |
+| Rugged, `hostile` | 10 B in 5.9 s |
+| Silent, each near-ultrasonic scenario | 21 B in 9.6 s (one burst of 2 frames) |
+| Silent Robust, `crowd` | 59 B in 28.6 s |
 
 The frame-recovery row uses one seed per scenario, and the random multipath taps differ between scenarios, so a single cell (such as Rugged doing better in `noisy room` than in `room`) says little on its own. The ordering between profiles is the meaningful part.
 
-**`acoustic_modem_test.dart` (8 tests)** drives the whole `AcousticFountainModem` exactly as the channel wires it: the sender produces WAV bytes, the test strips the 44-byte header, runs the room simulator, and quantises the result to PCM16 again before the receiver sees it.
+**`acoustic_modem_test.dart` (9 tests)** drives the whole `AcousticFountainModem` exactly as the channel wires it: the sender produces WAV bytes, the test strips the 44-byte header, runs the room simulator, and quantises the result to PCM16 again before the receiver sees it.
 
 | Test | What it checks |
 |---|---|
 | *a text message survives speaker, room and microphone* | Standard in `room` (printed: 75 B in 1 burst). |
 | *rateless sender stops as soon as the receiver has enough* | A one-block message in `easy` finishes in at most 3 bursts. |
-| *every profile completes a loopback in a normal room* | 220 bytes on every profile in `room`, seed 31. |
+| *every audible profile completes a loopback in a normal room* | 220 bytes on every audible profile in `room`, seed 31. |
 | *a file spanning many bursts completes in a noisy room* | 1200 bytes on Safe (K = 25) in `noisy room`; `bursts × 4` must stay below `AcousticFountainModem.symbolBudget(K)`, which is `max(6K, K + 24)`. Printed: 7 bursts. |
-| *receiver finds the sender's profile without being told* | One listening receiver hears Rugged, Standard and Safe messages in turn; `rxProfile` is `null` before and after each message. |
+| *receiver finds the sender's profile without being told* | One listening receiver hears Rugged, Silent, Standard and Safe messages in turn; `rxProfile` is `null` before and after each message. |
+| *silent text round-trips through a hand-held loopback* | "SOS" (a 10-byte envelope) on Silent through `ultra hand`, heard by a receiver listening for every profile. Printed: 1 burst, 4.78 s per frame. |
 | *fixed-profile receiver ignores other profiles* | A Standard receiver with `autoDetectProfile: false` repairs no frames from a Rugged sender. |
 | *changing profile mid-listen restarts the receiver cleanly* | Switching profile while listening stops the receiver and does not throw on the next audio. |
 | *pcm16 conversion round-trips within quantisation error* | `pcm16ToFloat32` is within `2 / 32767` of the source. |
+
+**`acoustic_live_tone_test.dart` (7 tests)** covers the live frequency readout. The sender side must describe exactly what is played, and the receiver side must name the right frequency.
+
+| Test | What it checks |
+|---|---|
+| *describes exactly the samples encode writes* | For a 29-byte payload on all six profiles, `MtFskCodec.describe` produces a `ToneTimeline` whose `totalSamples` equals `encode(payload).length`, starting with a marker, ending with data, and returning `null` past the end. |
+| *merges consecutive silences and looks up by time* | Two silences in a row become one segment; `atTime` and `duration` agree at 1000 samples per second. |
+| *timeline matches each Standard burst* / *each Silent burst* | With `onBurst`, every burst's timeline length equals the WAV's sample count (`(bytes − 44) / 2`). Data segments carry `groups` tones (8 for Standard, 1 for Silent) and markers 2 tones on Audible and 1 on Silent, all inside the codec's `lowestHz`…`highestHz`. |
+| *finds a silent-band tone within a few hertz* | A pure 18 906 Hz sine gives exactly one peak, within 8 Hz, above −30 dBFS. |
+| *resolves every tone of an audible chord* | Four tones between 1.9 and 5.1 kHz give four peaks, each within 12 Hz. |
+| *reports nothing for silence and after reset* | No peaks before the ring is full, and none after `reset`. |
 
 ### 3.5 Reed-Solomon
 
@@ -403,8 +425,11 @@ How the tests use it:
 | `snrDb` | Signal-to-noise ratio of the added background noise, measured against the signal after multipath, reverb and roll-off |
 | `reverbTail` | Room reverberation: six echoes 35 ms apart, echo k having gain `reverbTail^k` |
 | `rolloffStages` | Number of cascaded one-pole low-pass filters (`alpha = 0.35`), modelling cheap speakers and microphones that lose the high tones; one stage is about −3 dB at 3.1 kHz |
-| `clockDriftPpm` | Sample-clock mismatch between sender and receiver, applied by stretching the signal with linear interpolation |
+| `clockDriftPpm` | Sample-clock mismatch between sender and receiver, applied by stretching the signal with Catmull-Rom (cubic) interpolation. Linear interpolation would knock about 6 dB off a 19 kHz tone. |
 | `multipathTaps` | Number of discrete reflections, each with a random delay of 40 to 1239 samples (about 1 to 28 ms) and a random gain of ±0.2 to ±0.9 |
+| `wobblePpm` (default 0) | Peak of a time-varying clock ratio at about 1 Hz: the Doppler of a hand-held phone. 600 ppm is about 0.2 m/s. |
+| `chatterSnrDb` (default none) | Signal-to-babble ratio of three simulated talkers: harmonic series on gliding 100–250 Hz fundamentals, energy up to 5 kHz, gated at a syllable rate |
+| `micGain` (default 1.0) | Level the signal reaches the ADC at, applied before noise, so loud chatter has headroom instead of clipping |
 
 The four scenarios, verified against the code:
 
@@ -417,7 +442,16 @@ The four scenarios, verified against the code:
 
 `AcousticScenario.all` is `[easy, room, noisyRoom]` and `allIncludingHostile` adds `hostile`. No test iterates over `allIncludingHostile`; `hostile` is used only by the Rugged test.
 
-Processing order: clock drift, then the direct path placed after `leadSilence` samples of silence (the buffer also gets a 0.5-second tail for echoes), then the multipath taps, then the reverb echoes, then the roll-off filters, and finally noise over the whole buffer with clipping to ±1. One `Random(seed)` drives both the multipath taps and the noise.
+Four near-ultrasonic scenarios form `AcousticScenario.ultra`. None has roll-off stages: at 19 kHz what matters is how weak the tone arrives relative to the microphone's own noise, which `snrDb` already expresses.
+
+| Scenario | `snrDb` | `reverbTail` | `clockDriftPpm` | `multipathTaps` | Extra |
+|---|---|---|---|---|---|
+| `ultraDesk` (name `ultra desk`) | 10 | 0.2 | 80 | 3 | — |
+| `ultraHand` (name `ultra hand`) | 4 | 0.35 | 200 | 5 | `wobblePpm` 500 |
+| `chatter` | 10 | 0.3 | 100 | 3 | `chatterSnrDb` −6, `micGain` 0.2 |
+| `crowd` | 10 | 0.3 | 100 | 3 | `chatterSnrDb` −15, `micGain` 0.08 |
+
+Processing order: clock drift and wobble, then the direct path placed after `leadSilence` samples of silence (the buffer also gets a 0.5-second tail for echoes), then the multipath taps, then the reverb echoes, then the roll-off filters, then `micGain`, then chatter, and finally noise over the whole buffer with clipping to ±1. One `Random(seed)` drives both the multipath taps and the noise.
 
 The noise is a sum of four uniform random numbers scaled by 1.41, whose standard deviation is about 0.81 rather than 1. The effective SNR is therefore about 1.8 dB better than `snrDb` states. The scenarios are still hard, but keep this in mind when comparing them with other channel models.
 
@@ -474,7 +508,7 @@ The automated suite cannot replace two real phones. Install the same build on bo
 
 ### 6.2 Sound
 
-Run each profile (Rugged, Safe, Standard, Fast) at two distances.
+Run each Audible profile (Rugged, Safe, Standard, Fast) at two distances, then both Silent profiles at arm's length.
 
 | Check | Steps | Pass criteria |
 |---|---|---|
@@ -483,6 +517,9 @@ Run each profile (Rugged, Safe, Standard, Fast) at two distances.
 | Profile auto-detection | Send consecutive messages at different profiles without touching the receiver | The receiver shows the correct profile each time and delivers each message |
 | Background noise | Play speech or music nearby and send on Rugged | The message still arrives, possibly more slowly |
 | Multiple receivers | Two receivers listen to one sender | Both receive the message |
+| Silent band | Send "sos" on Silent at 20–50 cm with media volume at maximum, then swap roles | Nothing audible to most adults; the receiver's *Silent band 18–20 kHz* meter rises and the message arrives. Record any phone pair that fails in one direction |
+| Live readout, sender | Watch **Sending now** during an Audible and a Silent send | Audible shows a range such as *1.94–6.80 kHz · 8 tones at once*; Silent shows one tone between 18.3 and 19.9 kHz; *Sync marker* and *Gap between frames* appear briefly; the readout disappears on **Stop** |
+| Live readout, receiver | Watch **Hearing now** on the receiver during the same sends, then in a quiet room | During a send it follows the sender's kHz to within about ±20 Hz; in a quiet room it shows **—**; whistling or a tone app shows that frequency |
 
 ### 6.3 Vibration
 
@@ -525,6 +562,7 @@ The following are not exercised by any automated test. They are the main reason 
 | Gallery write path | The `gal` plugin calls and the album write on a real OS; the test host reports `isSupported == false`, so only `canSave` is really exercised. | `lib/core/media/gallery_saver.dart` |
 | Vibration end to end | Only `VibrationBitCodec` bit and pulse mapping and threshold checks are tested; there is no vibration channel simulator and no end-to-end vibration transfer test. | `lib/core/physical/physical_codecs.dart`, `lib/core/channels/vibration_channel.dart` |
 | UI flows | Only the home screen is pumped. Send compose, send transmit (including **Resume streaming**), receive, the developer menu, the Simulation Lab and Performance screens, and the received-content view have no widget tests. | `lib/ui/screens/`, `lib/ui/widgets/` |
+| Live readout on a device | `LiveToneMeter` is never pumped, and nothing checks the sender's clock against real playback. The sender starts its clock when `AudioPlayer.play()` returns, so output latency (tens of milliseconds, more over Bluetooth) makes **Sending now** run slightly ahead of the sound. The receiver path is only tested through `SpectrumAnalyzer` on synthetic tones. | `lib/ui/widgets/live_tone_meter.dart`, `HardwareAcousticChannel._playWav` |
 | Simulation scenarios | Six of the nine scenarios, and channel choice or switch counts in the three that are tested. Simulation results are also non-deterministic because `SimulatedMedium` uses an unseeded `Random()`. | `lib/core/simulation/` |
 | Performance Comparison | `PerformanceComparator` and its strategies have no test. | `lib/core/performance/` |
 | Web build | Nothing runs in a browser; the `FQR3:` string path is tested only as a codec. | `web/`, `lib/core/physical/fountain/qr_fountain_frame.dart` |

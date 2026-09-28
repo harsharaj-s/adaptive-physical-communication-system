@@ -92,13 +92,15 @@ The same information as a table, which is easier to scan:
 | `physical/fountain/lt_codec` | nothing |
 | `physical/fountain/qr_fountain_frame` | `protocol` (for `computeCrc32`) |
 | `physical/fountain/fountain_qr_modem` | `chat`, `logging`, `physical/fountain/*`, `physical/optical_modem`, `physical/optical_tx_profile`, `physical/qr_*`, `platform`, `protocol` |
-| `physical/acoustic/mt_fsk_codec`, `reed_solomon` | nothing |
+| `physical/acoustic/reed_solomon`, `tone_timeline`, `spectrum_analyzer`, `biquad_filter` | nothing |
+| `physical/acoustic/mt_fsk_codec` | `physical/acoustic/tone_timeline` |
 | `physical/acoustic/acoustic_fountain_modem` | `logging`, `physical/acoustic/*`, `physical/fountain/lt_codec`, `physical/physical_codecs`, `protocol` |
 | `physical/physical_codecs` | `protocol`, `chat` |
 | `physical/hardware_phy_config` | `transport` (for `TransportConfig`), `types` |
 | `physical/csk/csk_optical_modem` | `chat`, `logging`, `physical/optical_csk_*`, `physical/optical_modem`, `physical/optical_tx_profile`, `platform`, `protocol`, `channels/optical_web_sampler` |
 | `physical/qr_decode_isolate_pool` | `channels/optical_web_qr_decoder`, `physical/qr_frame_decoder` |
 | `platform/platform_capabilities` | `physical/fountain/qr_bitmap` |
+| `platform/acoustic_spectrum_state` | `physical/acoustic/spectrum_analyzer`, `physical/acoustic/tone_timeline` (data types only) |
 | `media` | `chat` |
 | `simulation/simulated_medium` | `protocol`, `types` |
 | `simulation/simulation_orchestrator` | `channels/comm_channel`, `engine`, `logging`, `manager/channel_manager`, `manager/transfer_state_machine`, `protocol`, `simulation/simulated_medium`, `transport`, `types` |
@@ -166,7 +168,7 @@ class ChatMessage {
 | Member | Behaviour |
 |---|---|
 | `ChatMessageType` | The enum **index is the wire value** in the APCM type byte: text 0, image 1, video 2, file 3, link 4. Never reorder it. |
-| `ChatMessageStatus` | `sending` while in flight, `sent` when a Light stream ended (no back-channel), `delivered` when confirmed or received, `failed` on error. |
+| `ChatMessageStatus` | `sending` while in flight, `sent` when a Light or Sound stream ended (no back-channel), `delivered` when confirmed or received, `failed` on error. |
 | `id` | A string of `DateTime.now().millisecondsSinceEpoch`. `GallerySaver` uses it to avoid saving twice. |
 | `text` / `data` | Text and link messages keep their content in `text` and leave `data` null. Media and files keep bytes in `data`. |
 | `copyWith` | Copies the message. Only `id`, `status`, `isOutgoing`, `text` and `data` can change; `type`, `timestamp`, `fileName`, `mimeType` and `byteSize` are always kept. |
@@ -188,6 +190,7 @@ class ChatPayloadCodec {
     String? fileName,
     String? mimeType,
   });
+  static int overheadBytes({String? fileName, String? mimeType});
   static Uint8List encodeText(String text);
   static Uint8List encodeLink(String url);
   static bool isApcmEnvelope(Uint8List raw);
@@ -200,8 +203,9 @@ class ChatPayloadCodec {
 | Method | Behaviour |
 |---|---|
 | `encode` | Writes the envelope. `fileName` and `mimeType` default to empty strings. **No length checks:** the name and MIME lengths are written with `addByte`, so a UTF-8 name longer than 255 bytes silently wraps and corrupts the envelope. |
-| `encodeText(text)` | `encode` with type `text`, name `message.txt` and MIME `text/plain` (28 bytes of overhead). `encodeText('sos')` is 31 bytes. |
-| `encodeLink(url)` | `encode` with type `link`, name `link.url` and MIME `text/uri-list` (also 28 bytes of overhead). |
+| `overheadBytes({fileName, mimeType})` | Bytes `encode` adds around the data (4 magic + 3 type/length bytes + UTF-8 name + UTF-8 MIME), computed without building an envelope. `overheadBytes()` is 7. |
+| `encodeText(text)` | `encode` with type `text` and an empty name and MIME type (7 bytes of overhead). `encodeText('sos')` is 10 bytes. |
+| `encodeLink(url)` | `encode` with type `link` and an empty name and MIME type (also 7 bytes of overhead). |
 | `isApcmEnvelope(raw)` | True when `raw` is at least 4 bytes and starts with the magic. Checks nothing else. |
 | `looksComplete(raw)` | For non-APCM bytes, returns `raw.isNotEmpty`. For APCM bytes it requires a valid type index, name and MIME lengths inside the buffer, and a plausible body: text and link non-empty; image passes `isDisplayableImage`; video at least **512** bytes; file non-empty. |
 | `isDisplayableImage(data)` | Requires at least **24** bytes and a JPEG (`FF D8`), PNG (`89 50 4E 47`), GIF (`47 49 46`) or WebP (`52 49 ... 57 45` at offsets 0, 1, 8, 9) signature. It does not look for a JPEG end marker. |
@@ -218,13 +222,13 @@ import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
 import 'package:adaptive_physical_communication/core/chat/chat_payload_codec.dart';
 
 final env = ChatPayloadCodec.encodeText('sos');
-assert(env.length == 31);                        // 4 magic + 1 type + 1 + 11 name + 1 + 10 mime + 3 body
+assert(env.length == 10);                        // 4 magic + 1 type + 1 name len + 1 mime len + 3 body
 assert(ChatPayloadCodec.isApcmEnvelope(env));
 assert(ChatPayloadCodec.looksComplete(env));
 
 final msg = ChatPayloadCodec.decodeIncoming(env, isOutgoing: false)!;
 assert(msg.type == ChatMessageType.text && msg.text == 'sos');
-assert(msg.fileName == 'message.txt' && msg.mimeType == 'text/plain');
+assert(msg.fileName == null && msg.mimeType == null);
 
 // A truncated image envelope is refused rather than shown half-broken.
 final photo = ChatPayloadCodec.encode(
@@ -394,17 +398,17 @@ class HardwareAcousticChannel implements CommChannel {
 | `AcousticModemKind` | `fountain` (default): MT-FSK + Reed-Solomon + LT via `AcousticFountainModem`. `legacyFsk`: the old two-tone `FskCodec` with whole-message repeats. Changing it while the microphone runs resets the decoders. |
 | `capabilities` | `name: 'Acoustic (Hardware)'`, `maxThroughput: 4000`, `minLatency: 200`. |
 | `maxEnvelopeBytes` | `acousticFountainMaxBytes` (8192) in fountain mode, `hardwareAcousticDirectMaxBytes` (900) in legacy mode. `AppController` uses it to choose between the direct path and the protocol path. |
-| `initialize()` | Requests the microphone (native only), sets the player to full volume and, on native platforms, configures the audio session: Android speakerphone on, stay awake, speech content, voice-communication usage, audio focus gain; iOS `playAndRecord` with `defaultToSpeaker` and `allowBluetooth`. |
-| `start({enableReceiver})` | Without a receiver it stops the microphone and resets `acousticReceiverState`. With a receiver it checks permission (setting phase `permissionDenied` on failure), starts a PCM16 mono 44 100 Hz stream from `AndroidAudioSource.voiceCommunication`, resets the decoders and sets phase `listening`. |
-| Microphone callback | Converts each chunk with `pcm16ToFloat32`, computes RMS, and in fountain mode feeds `AcousticFountainModem.addSamples`, updates `acousticReceiverState` (levels throttled to one update per **80 ms**) and moves finished envelopes to an internal buffer. The tone meter shows `0.35 + 0.65 × progress` while a transfer is live, otherwise `clamp(RMS × 12)`. The phase goes to `tonesDetected` above 0.12 and back to `listening` at or below 0.08. |
-| `transmitEnvelope(env)` | Throws `StateError('Acoustic channel not running')` if stopped and `ArgumentError('Envelope too large for the acoustic channel')` above `maxEnvelopeBytes`. Always stops the microphone first (voice-mode recording ducks playback). Fountain mode: publishes progress through `acousticTransmitterState` and awaits `AcousticFountainModem.transmit` until cancelled or `stop()` is called. Legacy mode: frames with `frameDirectEnvelope`, prepends `hardwareAcousticLeadSilenceMs` (180) of silence, and plays the WAV `hardwareAcousticTxRepeatCount` (3) times with `hardwareAcousticTxRepeatGapMs` (350) gaps. |
-| `cancelTransmit()` | Stops a rateless fountain transmission after the current burst. |
+| `initialize()` | Requests the microphone (native only), sets the player to full volume and, on native platforms, applies the audio session for the current profile's band. **Audible:** Android speakerphone on, stay awake, speech content, voice-communication usage, audio focus gain; iOS `playAndRecord` with `defaultToSpeaker` and `allowBluetooth`. **Silent:** Android plain media playback (normal mode, music content, media usage) with stay awake and audio focus gain; iOS `playAndRecord` with `defaultToSpeaker` only. The voice-call path and Bluetooth hands-free audio would filter out 18–20 kHz. Each transmit re-applies the session if the band changed. |
+| `start({enableReceiver})` | Without a receiver it stops the microphone and resets `acousticReceiverState`. With a receiver it checks permission (setting phase `permissionDenied` on failure), starts a PCM16 mono 44 100 Hz stream from `AndroidAudioSource.voiceRecognition` (the Android CDD requires noise suppression and AGC off and a flat response there, and covers 18.5–20 kHz on devices that claim near-ultrasound support), resets the decoders and sets phase `listening`. |
+| Microphone callback | Converts each chunk with `pcm16ToFloat32`, computes RMS and the high-band level (RMS after a 16 kHz `HighPassFilter`, mapped from −70…−20 dBFS onto 0…1), and in fountain mode feeds `AcousticFountainModem.addSamples`, updates `acousticReceiverState` (levels throttled to one update per **80 ms**) and moves finished envelopes to an internal buffer. The tone meter shows `0.35 + 0.65 × progress` while a transfer is live, otherwise `max(clamp(RMS × 12), highBand)`, so Silent tones also move it. The phase goes to `tonesDetected` above 0.12 and back to `listening` at or below 0.08. In both modes every chunk is also copied into a `SpectrumAnalyzer`, and each time the 80 ms throttle lets an update through, `acousticSpectrumState.setRx(analyzer.analyze())` publishes the receiver's live spectrum. |
+| `transmitEnvelope(env)` | Throws `StateError('Acoustic channel not running')` if stopped and `ArgumentError('Envelope too large for the acoustic channel')` above `maxEnvelopeBytes`. Always stops the microphone first (voice-mode recording ducks playback). Fountain mode: publishes progress through `acousticTransmitterState` and awaits `AcousticFountainModem.transmit` until cancelled or `stop()` is called. It passes `onBurst` to capture each burst's `ToneTimeline`; `_playWav` calls `acousticSpectrumState.startTxBurst(tones)` as soon as `AudioPlayer.play()` returns, and `endTx()` runs when the transmission ends. Legacy mode: frames with `frameDirectEnvelope`, prepends `hardwareAcousticLeadSilenceMs` (180) of silence, and plays the WAV `hardwareAcousticTxRepeatCount` (3) times with `hardwareAcousticTxRepeatGapMs` (350) gaps. |
+| `cancelTransmit()` | If a fountain transmission is running: cancels the modem loop, clears the sender readout (`acousticSpectrumState.endTx()`), stops the audio player and completes the pending playback wait, so the current burst is cut off immediately. `stop()` calls it first. |
 | `receiveEnvelopes()` | Returns and clears finished envelopes. |
 | `clearReceiveCaches({resetDedup})` | Resets both decoders and buffers. With `resetDedup` the same envelope can be delivered again. |
 | `transmit(packet)` | Protocol path. **Always uses the legacy two-tone `FskCodec`**, even in fountain mode. |
 | `receive()` | Returns packets decoded by the legacy `FskStreamDecoder`. In fountain mode no packets are decoded, so this returns an empty list. |
 | `discover` / `test` / `getMetrics` | Heuristics from microphone noise level; fixed latency 200 ms and stability 0.7; loss defaults to 0.08. |
-| `stop()` | Stops the microphone and player and resets `acousticReceiverState` (keeping the decode count). |
+| `stop()` | Stops the microphone and player and resets `acousticReceiverState` (keeping the decode count). Stopping the microphone, here or before a transmit, also resets the spectrum analyzer and `acousticSpectrumState.resetRx()`. |
 
 **Used by:** `AppController`, `createChannelManagerForMode`.
 
@@ -1632,23 +1636,32 @@ class MtFskCodec {
     int groups = 6,
     int framesPerSymbol = 4,
     int markerFrames = 2,
+    int toneSpacing = 1,
+    int guardFrames = 0,
+    bool sequentialMarker = false,
+    double peakAmplitude = 0.98,
+    int? syncBinA,
+    int? syncBinB,
   });
 
-  int get syncBinA;             // baseBin - 12  (28 → 1205.9 Hz)
-  int get syncBinB;             // baseBin - 4   (36 → 1550.4 Hz)
-  int get bytesPerSymbol;       // groups ~/ 2
+  final int syncBinA;           // default baseBin - 12  (28 → 1205.9 Hz)
+  final int syncBinB;           // default baseBin - 4   (36 → 1550.4 Hz)
+  double get bytesPerSymbol;    // groups / 2  (0.5 for one group)
   int get samplesPerSymbol;     // frameSamples * framesPerSymbol
   int get samplesPerMarker;     // frameSamples * markerFrames
   double get binHz;             // sampleRate / frameSamples  (43.066 Hz)
   double get symbolMs;
   double get rawBytesPerSecond;
+  double get lowestHz;          // lowest tone, sync included
+  double get highestHz;
 
-  int binFor(int group, int value);           // baseBin + 16*group + value
+  int binFor(int group, int value);           // baseBin + (16*group + value) * toneSpacing
   double frequencyFor(int group, int value);
-  int symbolsForBytes(int byteCount);
+  int symbolsForBytes(int byteCount);         // ceil(2 * byteCount / groups)
   int samplesForBytes(int byteCount);
 
   Float32List encode(Uint8List payload);
+  void describe(Uint8List payload, ToneTimeline into);
   double markerScore(Float32List samples, int start);
   double symbolConfidence(Float32List samples, int start, {int? groupLimit});
   ({List<int> nibbles, double confidence}) decodeSymbol(Float32List samples, int start);
@@ -1660,11 +1673,12 @@ class MtFskCodec {
 
 | Member | Behaviour |
 |---|---|
-| Constructor | Asserts `groups ≥ 1`, `groups` even, `framesPerSymbol ≥ 1`. Precomputes one Goertzel coefficient per tone (16 per group). |
-| `encode(payload)` | A marker of both sync tones for `samplesPerMarker` samples, then one symbol per `bytesPerSymbol` bytes. Nibble `s·groups + g` goes to group `g` of symbol `s`, high nibble first. Each tone has amplitude `0.98 / (tones sounding)`. Missing trailing bytes are zeros. |
-| `markerScore(samples, start)` | 0 if out of range or silent. Otherwise, for each half of the marker window, `2·min(P_A, P_B) / meanSquare`; returns the lower half. An ideal aligned marker scores about 512. |
-| `symbolConfidence` | Mean over the first `groupLimit` groups of best-tone power ÷ total group power. Used to fine-tune alignment. |
-| `decodeBytesSoft` | Hard decision per group (strongest of 16 tones). Per-byte reliability = the lower margin `1 − second/best` of its two nibbles. `confidence` = mean best/total. Stops early if the samples run out. |
+| Constructor | Asserts `groups ≥ 1`, `framesPerSymbol ≥ 1`, `0 ≤ guardFrames < framesPerSymbol`, `toneSpacing ≥ 1`, an even `markerFrames` when `sequentialMarker`, and `0 < peakAmplitude ≤ 1`. Odd `groups` are allowed: with one group a byte spans two symbols. Precomputes one Goertzel coefficient per tone (16 per group). The defaults reproduce the audible plan exactly. |
+| `encode(payload)` | A marker for `samplesPerMarker` samples (both sync tones together, or with `sequentialMarker` tone A in the first half and tone B in the second), then the data symbols. Nibble `s·groups + g` goes to group `g` of symbol `s`, high nibble first. Each tone has amplitude `peakAmplitude / (tones sounding)`. Missing trailing bytes are zeros. |
+| `describe(payload, into)` | Appends to `into` what `encode(payload)` would play, without synthesising audio: two marker halves (`ToneKind.marker`), then one `ToneKind.data` segment per symbol listing its tone frequencies in Hz. It shares `_markerBins` and `_symbolBins` with `encode`, so the two can't disagree, and the timeline's length equals `encode(payload).length`. |
+| `markerScore(samples, start)` | 0 if out of range or silent. Otherwise, for each half of the marker window, `(tones in that half) · weakest tone power / meanSquare`; returns the lower half. An ideal aligned marker scores about 512 in both marker styles. |
+| `symbolConfidence` | Mean over the first `groupLimit` groups of best-tone power ÷ total group power, over the analysis window. Used to fine-tune alignment. |
+| `decodeBytesSoft` | Hard decision per group (strongest of 16 tones), measured only after the first `guardFrames` frames of each symbol. Nibbles are packed into bytes for any group count. Per-byte reliability = the lower margin `1 − second/best` of its two nibbles; bytes whose symbols never arrived keep reliability 0. `confidence` = mean best/total. Stops early if the samples run out. |
 
 **Used by:** `AcousticTxProfile.buildCodec`, `AcousticFrameSync`, `AcousticFountainModem`.
 
@@ -1758,9 +1772,20 @@ Big-endian body: symbolIndex u16, K u16, blockLen u8, fileLen u24, sessionId u8,
 
 ### 12.4 `lib/core/physical/acoustic/acoustic_tx_profile.dart`
 
-The four Sound speed profiles and their derived rates.
+The two Sound bands, the six speed profiles and their derived rates.
 
 ```dart
+enum AcousticBand {
+  audible,          // label 'Audible', baseBin 40, toneSpacing 1, sync 28/36, chords, peak 0.98
+  nearUltrasonic;   // label 'Silent', baseBin 431, toneSpacing 2, sync 424/427, sequential marker, peak 0.8
+
+  final String label;
+  final int baseBin, toneSpacing, syncBinA, syncBinB;
+  final bool sequentialMarker;
+  final double peakAmplitude;
+  final double? receiveHighPassHz;   // null (audible) or 16000 (Silent)
+}
+
 class AcousticTxProfile {
   const AcousticTxProfile({
     required String id,
@@ -1769,32 +1794,134 @@ class AcousticTxProfile {
     required int framesPerSymbol,
     required int blockLen,
     required int parityBytes,
+    AcousticBand band = AcousticBand.audible,
+    int guardFrames = 0,
   });
 
-  static const rugged, safe, standard, fast;
-  static const values = [rugged, safe, standard, fast];   // slowest to fastest
+  static const rugged, safe, standard, fast, silentRobust, silent;
+  static const audibleValues = [rugged, safe, standard, fast];   // slowest to fastest
+  static const silentValues = [silentRobust, silent];
+  static const values = [...audibleValues, ...silentValues];     // everything a receiver hears
 
-  MtFskCodec buildCodec();
+  bool get isSilent;                     // band == nearUltrasonic
+  MtFskCodec buildCodec();               // passes the band's tone plan
   AcousticFrameCodec buildFrameCodec();
   int get codewordLength;                // 11 + blockLen + parityBytes
-  double netBytesPerSecond();
+  double netBytesPerSecond();            // blockLen / frameSeconds()
   double frameSeconds();
   String get conditionHint;
   AcousticTxProfile get slower;
+  static List<AcousticTxProfile> forBand(AcousticBand band);
+  static AcousticTxProfile defaultFor(AcousticBand band);   // standard or silent
   static AcousticTxProfile byId(String id);
 }
 ```
 
-| Constant | `id` | `groups` | `framesPerSymbol` | `blockLen` | `parityBytes` | Codeword | `frameSeconds()` | `netBytesPerSecond()` |
-|---|---|---|---|---|---|---|---|---|
-| `rugged` | `'rugged'` | 6 | 6 | 32 | 20 | 63 | 2.972 s | 10.8 |
-| `safe` | `'safe'` | 6 | 4 | 48 | 24 | 83 | 2.647 s | 18.1 |
-| `standard` | `'standard'` | 8 | 4 | 64 | 24 | 99 | 2.368 s | 27.0 |
-| `fast` | `'fast'` | 8 | 3 | 64 | 24 | 99 | 1.788 s | 35.8 |
+| Constant | `id` | Band | `groups` | `framesPerSymbol` (guard) | `blockLen` | `parityBytes` | Codeword | `frameSeconds()` | `netBytesPerSecond()` |
+|---|---|---|---|---|---|---|---|---|---|
+| `rugged` | `'rugged'` | audible | 6 | 6 | 32 | 20 | 63 | 2.972 s | 10.8 |
+| `safe` | `'safe'` | audible | 6 | 4 | 48 | 24 | 83 | 2.647 s | 18.1 |
+| `standard` | `'standard'` | audible | 8 | 4 | 64 | 24 | 99 | 2.368 s | 27.0 |
+| `fast` | `'fast'` | audible | 8 | 3 | 64 | 24 | 99 | 1.788 s | 35.8 |
+| `silentRobust` | `'silent_robust'` | nearUltrasonic | 1 | 3 (1) | 24 | 16 | 51 | 7.152 s | 3.4 |
+| `silent` | `'silent'` | nearUltrasonic | 1 | 2 (1) | 24 | 16 | 51 | 4.783 s | 5.0 |
 
-The last two columns are computed by the methods (see the README's worked calculation). `conditionHint`: rugged `'Loud room, phones metres apart'`, safe `'Background noise or chatter'`, fast `'Quiet room, phones touching'`, anything else `'Normal room, across a table'`. `slower` steps one place down `values` (rugged stays rugged). `byId` falls back to `standard`. `==` compares `id` only.
+The last two columns are computed by the methods (see the README's worked calculation). `conditionHint`: rugged `'Loud room, phones metres apart'`, safe `'Background noise or chatter'`, fast `'Quiet room, phones touching'`, silent `'Inaudible 18–20 kHz, phones within arm's reach'`, silent_robust `'Inaudible, weak speaker or a loud crowd'`, anything else `'Normal room, across a table'`. `slower` steps one place down its own band's list and never crosses bands (rugged and silentRobust stay put). `byId` falls back to `standard`. `==` compares `id` only.
 
-**Used by:** `AcousticFountainModem`, `AcousticFrameSync`, `HardwareAcousticChannel`, `AppController` (`acousticTxProfile`, `acousticEtaSeconds`), `send_transmit_screen.dart` and `acoustic_transfer_hud.dart` (speed chips).
+**Used by:** `AcousticFountainModem`, `AcousticFrameSync`, `HardwareAcousticChannel`, `AppController` (`acousticTxProfile`, `acousticEtaSeconds`), `send_transmit_screen.dart` and `acoustic_transfer_hud.dart` (band switch, speed chips, frame breakdown).
+
+### 12.4a `lib/core/physical/acoustic/biquad_filter.dart`
+
+IIR high-pass filtering for the Silent receiver and the high-band level meter.
+
+```dart
+class Biquad {
+  Biquad.highPass({required double cutoffHz, required double q, int sampleRate = 44100});
+  void process(Float32List samples);    // in place; state carries across calls
+  void reset();
+}
+
+class HighPassFilter {                  // 4th-order Butterworth: Q 0.5412 and 1.3066
+  HighPassFilter({required double cutoffHz, int sampleRate = 44100});
+  Float32List apply(Float32List samples);   // filtered copy; input untouched
+  void reset();
+}
+```
+
+`Biquad` uses the RBJ cookbook coefficients in transposed direct form II, so a stream filtered chunk by chunk gives the same output as in one piece. `HighPassFilter.apply` returns a copy because one microphone chunk is shared by every profile's frame-sync.
+
+**Used by:** `AcousticFrameSync` (profiles whose band has `receiveHighPassHz`), `HardwareAcousticChannel` (the *Silent band* meter).
+
+### 12.4b `lib/core/physical/acoustic/tone_timeline.dart`
+
+The schedule of tones in one rendered burst, for the sender's live readout.
+
+```dart
+enum ToneKind { silence, marker, data }
+
+class ToneTimeline {
+  ToneTimeline({required int sampleRate});
+
+  final int sampleRate;
+  int get totalSamples;
+  Duration get duration;
+  int get segmentCount;
+
+  void addSilence(int samples);                              // merges with a preceding silence
+  void addTones(int samples, ToneKind kind, List<double> hz);
+  ({ToneKind kind, Float32List hz})? at(int sample);         // null outside [0, totalSamples)
+  ({ToneKind kind, Float32List hz})? atTime(Duration elapsed);
+}
+```
+
+Segments are stored as cumulative end positions, so `at` is a binary search. A zero-length segment is ignored. Silence segments share one empty list. A Standard burst of four frames is about 110 segments.
+
+**Used by:** `MtFskCodec.describe`, `AcousticFountainModem.transmit` (`onBurst`), `HardwareAcousticChannel._playWav`, `AcousticSpectrumState`.
+
+### 12.4c `lib/core/physical/acoustic/spectrum_analyzer.dart`
+
+A windowed FFT over the latest microphone audio, for the receiver's live readout.
+
+```dart
+class SpectrumSnapshot {
+  final Float32List bands;       // loudest level per band, −100…−20 dBFS mapped to 0…1
+  final double bandHz;           // width of one band
+  final List<double> peaksHz;    // distinct tones, strongest first
+  final double? peakDbfs;        // level of the strongest tone
+  double? get strongestHz;
+  static final SpectrumSnapshot empty;
+}
+
+class SpectrumAnalyzer {
+  SpectrumAnalyzer({
+    int size = 1024,             // power of two
+    int sampleRate = 44100,
+    int bandCount = 96,
+    double minPeakHz = 500,
+    double maxPeakHz = 21000,
+    int maxPeaks = 8,
+  });
+
+  static const floorDbfs = -100.0;
+  static const ceilingDbfs = -20.0;
+  static const peakMarginDb = 18.0;
+  static const peakMinDbfs = -85.0;
+
+  double get binHz;              // 43.066 Hz at the defaults
+  void add(Float32List samples); // copy into the ring only
+  void reset();
+  SpectrumSnapshot analyze();    // empty until the ring has been filled once
+}
+```
+
+| Member | Behaviour |
+|---|---|
+| `add` | Copies samples into a ring of `size`. It does no maths, so it is safe to call on every microphone chunk. |
+| `analyze` | Hann window, then an in-place iterative radix-2 FFT with precomputed twiddles. Power is scaled so that a full-scale sine reads 0 dBFS. |
+| Bands | `bandCount` equal-width bands from 0 Hz to Nyquist, each the loudest bin inside it. |
+| Peaks | Local maxima between `minPeakHz` and `maxPeakHz` that are at least `peakMarginDb` above the median bin and at or above `peakMinDbfs`. Taken strongest first, a peak is dropped if it is within 4 bins of one already kept (window leakage) or more than 35 dB below the strongest. Each position is refined by a parabola through the dB values of the peak bin and its neighbours. |
+
+**Used by:** `HardwareAcousticChannel` (writes `acousticSpectrumState.rx`).
 
 ### 12.5 `lib/core/physical/acoustic/acoustic_frame_sync.dart`
 
@@ -1829,7 +1956,7 @@ class AcousticFrameSync {
 }
 ```
 
-`addSamples` appends to a growable buffer (starting at 2¹⁵ samples, doubling) and processes it:
+`addSamples` first high-passes the chunk if the profile's band sets `receiveHighPassHz` (Silent: 16 kHz, filter state kept across chunks and cleared by `reset()`), then appends it to a growable buffer (starting at 2¹⁵ samples, doubling) and processes it:
 
 1. Scan from the cursor in `searchStep` (64-sample) steps until `markerScore ≥ markerThreshold` (8.0).
 2. Within the next marker length, find the peak score and take the **first** probe reaching 50 % of it (the leading edge).
@@ -1889,6 +2016,7 @@ class AcousticFountainModem {
     required Future<void> Function(Uint8List wav) play,
     bool Function()? shouldContinue,
     void Function(int sent, int needed)? onProgress,
+    void Function(ToneTimeline tones)? onBurst,
     int? maxSymbols,
   });
   void cancelTransmit();
@@ -1896,6 +2024,7 @@ class AcousticFountainModem {
 
   static int expectedSymbols(int k);     // ceil(1.25·k) + 2
   static int symbolBudget(int k);        // max(6·k, k + 24)
+  static void applyEdgeFades(Float32List samples, int start, int end, {int fadeSamples = 256});
 }
 
 Float32List pcm16ToFloat32(Uint8List chunk);
@@ -1918,7 +2047,9 @@ Float32List pcm16ToFloat32(Uint8List chunk);
 
 - The session id is `(millisecondsSinceEpoch ~/ 97) & 0xFF`, new for every call.
 - `needed = expectedSymbols(K)` is reported to `onProgress` for the progress bar only. The stream stops at `maxSymbols ?? symbolBudget(K)`.
-- It renders bursts of `max(2, min(4, K))` frames, each burst starting with **0.12 s** of silence, converts each burst with `pcmToWav` and awaits `play(wav)`.
+- It renders bursts of `max(2, min(4, K))` frames, each burst starting with **0.12 s** of silence and ending with a **40 ms** tail, fades the audio in and out with `applyEdgeFades`, converts each burst with `pcmToWav` and awaits `play(wav)`.
+- With `onBurst`, each burst also gets a `ToneTimeline` (lead silence, then `MtFskCodec.describe` for every frame, then the tail), passed to `onBurst` just before `play`. Without it no timeline is built.
+- `applyEdgeFades(samples, start, end)` applies raised-cosine ramps of `fadeSamples` (256, 5.8 ms) at both ends of `[start, end)`, so a burst never starts or stops with a click. For Silent profiles a click would be the only audible part.
 - It stops when `cancelTransmit()` is called, `shouldContinue()` returns false, or the budget is reached. Returns when the last burst has played.
 
 `estimateSeconds(bytes)` = `expectedSymbols(ceil(bytes / blockLen)) × frameSeconds()`.
@@ -1940,7 +2071,7 @@ final rx = AcousticFountainModem()..startReceive();          // detects the send
 final received = <Uint8List>[];
 
 await tx.transmit(
-  envelope: ChatPayloadCodec.encodeText('Hello from sound!'), // 45-byte envelope, K = 1
+  envelope: ChatPayloadCodec.encodeText('Hello from sound!'), // 24-byte envelope, K = 1
   play: (wav) async {
     rx.addSamples(pcm16ToFloat32(Uint8List.sublistView(wav, 44)));  // skip the WAV header
     received.addAll(rx.takeEnvelopes());
@@ -2063,6 +2194,7 @@ class AcousticReceiverState extends ChangeNotifier {
   AcousticRxPhase get phase;
   double get inputLevel;
   double get toneStrength;
+  double get highBandLevel;      // 0..1, energy above 16 kHz (Silent band meter)
   int get packetsDecoded;
   int get collected;
   int get needed;
@@ -2074,7 +2206,7 @@ class AcousticReceiverState extends ChangeNotifier {
   bool get micLive;              // listening, tonesDetected, decoding or decoded
 
   void setPhase(AcousticRxPhase value);
-  void setLevels({required double input, required double tone});
+  void setLevels({required double input, required double tone, double highBand = 0});
   void setFountainProgress({required int collected, required int needed,
       required int framesRepaired, required int framesRejected, String profileLabel = ''});
   void markDecoded();
@@ -2084,7 +2216,7 @@ class AcousticReceiverState extends ChangeNotifier {
 final acousticReceiverState = AcousticReceiverState();
 ```
 
-`setLevels` only notifies when a level moves by more than 0.02. `setFountainProgress` only notifies on a real change, and switches the phase to `decoding` while a transfer is active and the microphone is live. `markDecoded` increments `packetsDecoded`, sets phase `decoded` and clears progress.
+`setLevels` only notifies when a level moves by more than 0.02; `reset` also clears `highBandLevel`. `setFountainProgress` only notifies on a real change, and switches the phase to `decoding` while a transfer is active and the microphone is live. `markDecoded` increments `packetsDecoded`, sets phase `decoded` and clears progress.
 
 **Used by:** `HardwareAcousticChannel` (writer), `receive_screen.dart` and `acoustic_transfer_hud.dart` (readers).
 
@@ -2101,7 +2233,9 @@ class AcousticTransmitterState extends ChangeNotifier {
   String get profileLabel;
   double get estimateSeconds;
   double get fraction;           // symbolsSent / symbolsPlanned, clamped
-  void beginAcoustic({required int totalBytes, required String profileLabel, required double estimateSeconds});
+  bool get silent;               // the current send uses a Silent profile
+  void beginAcoustic({required int totalBytes, required String profileLabel,
+      required double estimateSeconds, bool silent = false});
   void setAcousticProgress(int sent, int planned);
   void endAcoustic();
   void reset();
@@ -2111,6 +2245,28 @@ final acousticTransmitterState = AcousticTransmitterState();
 ```
 
 **Used by:** `HardwareAcousticChannel._transmitFountain` (writer), `send_transmit_screen.dart` and `acoustic_transfer_hud.dart` (readers).
+
+### 14.3a `lib/core/platform/acoustic_spectrum_state.dart`
+
+Live frequencies for the Sound readout: the tones on air (sender) and the microphone spectrum (receiver). It is separate from the transmitter and receiver states because it changes at audio rate, and only `LiveToneMeter` listens to it.
+
+```dart
+class AcousticSpectrumState extends ChangeNotifier {
+  ToneTimeline? get txTones;                          // burst now playing, or null
+  SpectrumSnapshot get rx;
+  ({ToneKind kind, List<double> hz})? txNow();        // segment at the playback clock
+  void startTxBurst(ToneTimeline tones);              // starts the clock now
+  void endTx();
+  void setRx(SpectrumSnapshot snapshot);
+  void resetRx();
+}
+
+final acousticSpectrumState = AcousticSpectrumState();
+```
+
+`txNow()` looks up `txTones.atTime(now − start)`, so it returns `null` once the burst's audio has run out and before the next burst starts. It notifies only on burst start and end. The widget polls `txNow()` on its own 50 ms timer while `txTones` is non-null. `setRx` notifies on every call, which is at most once per 80 ms because of the channel's throttle. `endTx` and `resetRx` do nothing if already clear.
+
+**Used by:** `HardwareAcousticChannel` (writer), `LiveToneMeter` (reader).
 
 ### 14.4 `lib/core/platform/vibration_transmitter_state.dart`
 
@@ -2624,12 +2780,12 @@ int acousticEtaSeconds(int bytes);
 | Method | Behaviour |
 |---|---|
 | `configurePhysicalFlow` | Switches to hardware mode, sets role and selected channel. The transfer mode becomes unicast for vibration and broadcast otherwise. For receivers it starts the hardware channels (which starts the 80 ms poll). |
-| `sendPhysicalMessage` | Returns `false` if already running or the payload is empty. Adds an outgoing `sending` message, builds the envelope (`_prepareEnvelope`: images go through `compressImageForTransfer` and are re-encoded as `image/jpeg`, default name `photo.jpg`; other types use `ComposePayload.toEnvelope`). Light envelopes above `FountainQrModem.maxEnvelopeBytes` fail. **Light**, and **Sound** up to `acousticChannel.maxEnvelopeBytes` (8192 in fountain mode), use the direct path; the message becomes `sent` for Light and `delivered` for Sound, or `failed`. Everything else (Vibration, larger Sound) uses `runHardwareTransfer` and becomes `delivered` or `failed`. Exceptions mark the message `failed` and return `false`. |
+| `sendPhysicalMessage` | Returns `false` if already running or the payload is empty. Adds an outgoing `sending` message, builds the envelope (`_prepareEnvelope`: images go through `compressImageForTransfer` and are re-encoded as `image/jpeg`, default name `photo.jpg`; other types use `ComposePayload.toEnvelope`). Light envelopes above `FountainQrModem.maxEnvelopeBytes` fail. **Light**, and **Sound** up to `acousticChannel.maxEnvelopeBytes` (8192 in fountain mode), use the direct path; the message becomes `sent` (neither has a return path), or `failed`. Everything else (Vibration, larger Sound) uses `runHardwareTransfer` and becomes `delivered` or `failed`. Exceptions mark the message `failed` and return `false`. |
 | Direct path | Starts channels for the sender role, then awaits `transmitEnvelope` on the optical or acoustic channel (this returns only when streaming stops). For Light the status is a summary from `lastTxEnd`, `lastTxFrames` and `lastTxDuration`, offering "Resume" after a stop or the 10-minute cap. Afterwards channels are restarted for the current role and that status is kept. |
 | `startListening(ch)` / `stopListening()` | Configure the receiver flow; stop all hardware channels and clear the selection. |
 | `prepareForNextMessage()` | "Clear & keep listening": clears protocol reassembly state and the idle timer, trims the delivered-transfer id set (above 32 it keeps 16), clears all physical receive caches **with** dedup reset (dropping Light partial sessions), restarts the camera stream if needed. |
-| `requestCancelTransfer()` | Sets `cancelRequested` and clears the Light and Vibration transmitting flags, which ends a Light stream and stops `TransferManager` loops. |
-| `cancelAcousticTransmit()` | Stops a Sound stream after the current burst. |
+| `requestCancelTransfer()` | Sets `cancelRequested`, clears the Light and Vibration transmitting flags and calls `cancelAcousticTransmit()`, which ends a Light or Sound stream and stops `TransferManager` loops. |
+| `cancelAcousticTransmit()` | Stops a Sound stream immediately, cutting off the burst that is playing. |
 | `retryAcousticListening()` | Only for the Sound channel: re-initialises (re-requesting the microphone) and restarts the receiver. |
 | `setOpticalTxProfile` / `setAcousticTxProfile` | Store the profile and push it to the channel if it exists. |
 | `acousticEtaSeconds(bytes)` | `ceil(expectedSymbols(max(1, ceil(bytes / blockLen))) × frameSeconds())` for the current Sound profile. |
@@ -2735,8 +2891,8 @@ Dart runs all of this code on the main UI isolate except the QR decoder. Work is
 
 ### 21.2 Main-isolate audio and sensor work
 
-- The microphone stream callback in `HardwareAcousticChannel` runs on the main isolate and does all Sound DSP there: PCM conversion, marker search and Goertzel demodulation for up to four `AcousticFrameSync`s while hunting (one after locking), Reed-Solomon and LT decoding. Each sample region is probed once and then discarded, so the cost follows the audio rate.
-- UI level updates from the microphone are throttled to one per **80 ms**.
+- The microphone stream callback in `HardwareAcousticChannel` runs on the main isolate and does all Sound DSP there: PCM conversion, marker search and Goertzel demodulation for up to six `AcousticFrameSync`s while hunting (one after locking; the two Silent ones also run a high-pass filter), Reed-Solomon and LT decoding. Each sample region is probed once and then discarded, so the cost follows the audio rate.
+- UI level updates from the microphone are throttled to one per **80 ms**. The live-readout FFT (1024 points) runs only inside that throttle; between updates each chunk is just copied into the analyzer's ring.
 - The accelerometer callback in `HardwareVibrationChannel` also runs on the main isolate.
 - Sound transmission renders each burst (2 to 4 frames) synchronously before playing it, then awaits the player's completion event.
 
@@ -2750,6 +2906,7 @@ Dart runs all of this code on the main UI isolate except the QR decoder. Work is
 | `FountainQrModem.transmit` loop | `max(40, round(1000 / txFps))` ms per frame; first frame +250 ms | Paces the QR stream (83 ms at 12 fps). |
 | `HardwareOpticalChannel._webSampleTimer` | **33 ms** periodic | Web-only preview sampling. |
 | `CskOpticalModem.onCameraFrame` | at most one sample per **45 ms** | CSK camera sampling. |
+| `LiveToneMeter` (sending) | **50 ms** periodic, only while a burst is playing | Repaints **Sending now** from `acousticSpectrumState.txNow()`. |
 | `TransferManager._transferLoop` | 50 ms (hardware) / 5 ms (simulation) per iteration | Protocol loop; switch evaluation every 20 iterations. |
 | `TransferManager._discoverPeer` | 300 ms between rounds | Unicast discovery beacons. |
 | `SimulationOrchestrator.runTransfer` | 5 ms per iteration | Simulation loop. |
@@ -2764,6 +2921,7 @@ Dart runs all of this code on the main UI isolate except the QR decoder. Work is
 | `OpticalMetricsNotifier` (per modem) | `FountainQrModem`, `CskOpticalModem` | Light receive HUD |
 | `acousticReceiverState` | `HardwareAcousticChannel` | receive screen, Sound HUD |
 | `acousticTransmitterState` | `HardwareAcousticChannel` | send screen, Sound HUD |
+| `acousticSpectrumState` | `HardwareAcousticChannel` | `LiveToneMeter` on the send and receive screens |
 | `vibrationTransmitterState` | `HardwareVibrationChannel`, `AppController` | send, receive and hardware screens |
 | `GallerySaver.instance` | itself | received content card (Save / Retry button) |
 
@@ -2772,7 +2930,7 @@ The Light and Sound notifiers are written from camera and microphone callbacks, 
 ### 21.5 Concurrency rules to keep
 
 - `AppController` uses the `_running` flag to allow one send, simulation or protocol transfer at a time; the receive poll skips while it is set.
-- Light and Sound `transmit` calls return only when the stream ends. Do not `await` them from code that must stay responsive; stop them with `requestCancelTransfer()` (Light) or `cancelAcousticTransmit()` (Sound).
+- Light and Sound `transmit` calls return only when the stream ends. Do not `await` them from code that must stay responsive; stop them with `requestCancelTransfer()` (either) or `cancelAcousticTransmit()` (Sound only).
 - Before transmitting sound, the acoustic channel stops the microphone; after any direct send, `AppController` restarts the channels for the current role.
 
 ---
@@ -2813,11 +2971,12 @@ Each recipe lists the exact files to touch. Enum `switch` statements in Dart are
 
 1. Add a `static const` to `AcousticTxProfile` in `lib/core/physical/acoustic/acoustic_tx_profile.dart`. Constraints from the code:
    - `id` must be unique (`==` compares only `id`).
-   - `groups` must be even (asserted by `MtFskCodec`). Each group adds 16 tones above bin 40, so 8 groups reach bin 167 (about 7.2 kHz).
+   - Pick its `band`. Each audible group adds 16 tones above bin 40, so 8 groups reach bin 167 (about 7.2 kHz). Silent profiles should keep `groups: 1`: two simultaneous near-ultrasonic tones produce an audible difference tone.
+   - `guardFrames` must be below `framesPerSymbol` (asserted by `MtFskCodec`).
    - `blockLen` must fit in one byte (the frame header field is 8 bits).
    - `11 + blockLen + parityBytes` must be at most 255 (the Reed-Solomon limit).
    - Leave `parityBytes > gmdReserve` (4) so GMD retries can run.
-2. Insert it into `AcousticTxProfile.values` in order from slowest to fastest. `slower` walks this list, `test/acoustic_channel_test.dart` checks that each profile is faster than the previous one, and the speed chips iterate it.
+2. Insert it into `AcousticTxProfile.audibleValues` or `silentValues`, in order from slowest to fastest. `slower` walks its band's list, `test/acoustic_channel_test.dart` checks that each profile is faster than the previous one in its band, and the speed chips iterate the band's list. `values` concatenates both.
 3. Automatic detection needs no change: `AcousticFountainModem` builds one `AcousticFrameSync` per entry in `values`, and a frame only counts if Reed-Solomon, the CRC-16 and the header `blockLen` all agree. Every extra profile adds CPU work while hunting.
 4. Add a `conditionHint` case if the default text does not fit.
 5. Verify it through the room model in `test/acoustic_channel_test.dart` and the loopback tests in `test/acoustic_modem_test.dart`; the rate table in the [Sound Channel](../channels/SOUND_CHANNEL.md) document should be updated from `frameSeconds()` and `netBytesPerSecond()`.

@@ -26,7 +26,7 @@ Back to the [documentation index](../README.md).
 flutter --version          # Flutter 3.41.1 / Dart 3.11.0 used for this project
 flutter pub get
 flutter analyze            # expect: No issues found!
-flutter test               # expect: 87 passed, 1 skipped
+flutter test               # expect: 100 passed, 1 skipped
 ```
 
 Never release a build that fails analysis or tests.
@@ -207,6 +207,20 @@ The splash background colour `#0B1220` appears in `tool/make_app_icon.py`, `andr
 - [ ] Permissions prompt correctly on a fresh install (camera, microphone, photos)
 - [ ] Launcher icon, splash and About dialog look right in light and dark system themes
 - [ ] [Known Issues](../project/KNOWN_ISSUES.md) reviewed; nothing new and High open
+- [ ] [Changelog](../project/CHANGELOG.md): move the **Unreleased** entries under a new `## [x.y.z] - YYYY-MM-DD` heading, add a link for it at the bottom, and state any compatibility break
+- [ ] Tag the release commit (`git tag -a vX.Y.Z -m "APCS X.Y.Z"`), push the tag, and create a GitHub Release with the changelog entry and the APK attached
+- [ ] Update `version` in `CITATION.cff` to match
+
+### Publishing the repository on GitHub
+
+Do these once, when the repository first becomes public:
+
+- [ ] **Settings → Code security → Private vulnerability reporting**: turn it on, so the **Report a vulnerability** button that [`SECURITY.md`](../../SECURITY.md) describes exists.
+- [ ] **Settings → General → Features**: keep **Issues** on. The forms in `.github/ISSUE_TEMPLATE/` replace blank issues.
+- [ ] Create the labels the issue forms use: `bug`, `triage`, `device-test` and `enhancement`.
+- [ ] **About** (repository sidebar): add a one-line description, and topics such as `flutter`, `qr-code`, `acoustic-modem`, `fountain-code`, `reed-solomon`, `offline-communication`.
+- [ ] Check that **Insights → Community Standards** shows every item as complete (description, README, code of conduct, contributing, license, security policy, issue templates and pull request template).
+- [ ] Search the history for secrets before the first public push: `git log -p | Select-String -Pattern "storePassword|keyPassword|BEGIN PRIVATE KEY"` should find nothing.
 
 ---
 

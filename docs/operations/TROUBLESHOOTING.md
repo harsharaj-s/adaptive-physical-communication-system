@@ -63,10 +63,15 @@ Back to the [documentation index](../README.md).
 | Works close, fails at 2 m | High-frequency roll-off, reverberation | Safe or Rugged (6 groups, longer symbols); a smaller, softer room helps |
 | Stops one block short | The sender ended its budget or was stopped | Play again: a new session starts, so keep the sender playing until the receiver shows DONE |
 | A photo sent by Sound never arrives | The envelope is over 8 KiB and took the legacy path ([Known Issue 2.2](../project/KNOWN_ISSUES.md#22-sound-messages-over-8-kib-silently-use-a-path-the-receiver-cant-decode-high)) | Send it by **Light**; for Sound use text or a 2 KB photo |
-| The sender shows "delivered" but nothing arrived | Sound has no return path; the status is optimistic ([Known Issue 2.1](../project/KNOWN_ISSUES.md#21-sound-sends-are-marked-delivered-medium)) | Check the receiver's screen |
-| No sound from the sender | Media volume at zero, silent mode, Bluetooth headphones connected | Turn media volume up; disconnect Bluetooth audio |
+| The sender shows "sent" but nothing arrived | Sound has no return path, so "sent" only means the sender played the frames | Check the receiver's screen |
+| No sound from the sender | Media volume at zero, silent mode, Bluetooth headphones connected | Turn media volume up; disconnect Bluetooth audio. On **Silent**, hearing nothing is normal: watch the receiver's *Silent band* meter instead |
 | Receiver hears the sender only on speakerphone-style phones | Some phones filter the voice microphone | Try the other phone as the receiver; put the phones closer |
-
+| **Silent:** the *Silent band 18–20 kHz* meter stays near zero | One phone's speaker or microphone doesn't pass 19 kHz, media volume low, or Bluetooth audio connected ([Known Issue 2.5](../project/KNOWN_ISSUES.md#25-the-silent-band-depends-on-each-phones-19-khz-response-medium-by-design)) | Media volume to maximum; disconnect Bluetooth; swap roles; otherwise switch to **Audible** |
+| **Silent:** the meter moves but no frames decode | Too far apart, phones moving, or a very loud crowd | 10–50 cm apart, hold still, or pick **Silent Robust** |
+| Sender's **Sending now** shows a kHz value but the receiver's **Hearing now** shows **—** | The tones aren't reaching the receiver's microphone: volume, distance, a covered speaker or microphone, Bluetooth audio, or (around 19 kHz) a phone that doesn't pass the Silent band | Same fixes as the rows above. Whistle near the receiver: if **Hearing now** follows the whistle, the microphone works and the problem is on the sender's side |
+| **Hearing now** matches the sender's kHz but nothing decodes | The tones arrive, but echoes, motion or noise corrupt them | Move closer, hold both phones still, or pick a slower speed (**Rugged**, **Safe** or **Silent Robust**) |
+| **Hearing now** shows a steady frequency with no sender playing | A fan, charger whine, monitor or another app making a tone | Harmless unless it sits inside the band in use: 1.2–7.2 kHz for Audible, 18.3–19.9 kHz for Silent. If it does, move away from the source or switch band |
+| **Silent:** faint ticks at the start and end of each burst | The speaker distorts at maximum volume | Lower the volume one step; the bursts already fade in and out |
 ---
 
 ## 4. Vibration

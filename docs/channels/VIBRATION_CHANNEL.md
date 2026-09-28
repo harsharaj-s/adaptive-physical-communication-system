@@ -149,9 +149,9 @@ Average bit period, assuming equally likely 0s and 1s: (190 + 290) / 2 = **240 m
 
 | Message | Envelope | Packet on air | Bits (incl. 8 preamble) | Time |
 |---|---|---|---|---|
-| "hi" | 30 B | 30 + 28 = 58 B | 472 | ≈113 s |
-| "ok" | 30 B | 58 B | 472 | ≈113 s |
-| "hello" | 33 B | 61 B | 496 | ≈119 s |
+| "hi" | 9 B | 9 + 28 = 37 B | 304 | ≈73 s |
+| "ok" | 9 B | 37 B | 304 | ≈73 s |
+| "hello" | 12 B | 40 B | 328 | ≈79 s |
 | 48-byte payload (a full packet) | — | 76 B | 616 | ≈148 s |
 
 The per-packet overhead (28 bytes, 224 bits, about 54 s) dominates short messages. This is why vibration is a demonstration channel for a word or two.

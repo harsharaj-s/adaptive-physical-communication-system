@@ -29,6 +29,9 @@ Back to the [documentation index](../README.md).
 | [ADR-17](#adr-17-headless-simulators-before-hardware) | Headless simulators before hardware | Accepted |
 | [ADR-18](#adr-18-photos-compressed-to--120-kb-bundled-demo-samples) | Photos compressed to ≤ 120 KB; bundled demo samples | Accepted |
 | [ADR-19](#adr-19-automatic-gallery-saving-with-gal) | Automatic Gallery saving with `gal` | Accepted |
+| [ADR-20](#adr-20-a-silent-near-ultrasonic-band-for-sound) | A Silent (near-ultrasonic) band for Sound | Accepted, extends ADR-10 and ADR-13 |
+| [ADR-21](#adr-21-text-and-link-envelopes-without-name-or-mime-type) | Text and link envelopes without name or MIME type | Accepted |
+| [ADR-22](#adr-22-live-frequency-readout-from-the-tone-schedule-and-a-throttled-fft) | Live frequency readout from the tone schedule and a throttled FFT | Accepted, applies ADR-15 and ADR-16 |
 
 ---
 
@@ -156,6 +159,20 @@ Back to the [documentation index](../README.md).
 
 **Context.** The legacy two-tone FSK (1 800 / 3 200 Hz, 18 ms per bit) delivered about 55.6 b/s raw, had no error correction, and assumed symbol boundaries at fixed offsets from the buffer start. Microphone chunks arrive at arbitrary offsets, so windows straddled tones.
 
+**Options.** The three M-ary keying families carry data in amplitude, phase or frequency:
+1. **M-ary ASK (amplitude levels).** Rejected. The received level changes with distance (about 6 dB from 20 to 40 cm), volume, the user's hand, the speaker's frequency response and room echoes, which can notch single frequencies by 10–20 dB. The receiver can't tell which level was sent.
+2. **M-ary PSK (phase angles).** Rejected. It needs coherent detection against a carrier reference that two phones don't share:
+   - The two phones' sample clocks drift apart.
+   - Multipath smears the phase.
+   - At 19 kHz a wavelength is 1.8 cm, so moving the phone 1 cm shifts the phase by about 200°.
+   - Hand motion at 0.1 m/s gives about 5.5 Hz of Doppler, which rotates the phase by about 90° over one 46 ms Silent symbol.
+3. **M-ary FSK (which frequency is playing).** Chosen.
+   - It is detected non-coherently: the receiver compares energies at known bins with Goertzel filters, with no phase tracking, and a common gain change cancels out.
+   - It has a constant envelope, so a small speaker can play it near full level without distortion.
+   - Unlike ASK and PSK, whose points crowd together as M grows, orthogonal FSK needs less energy per bit as M grows. It pays in bandwidth, which the audio band has to spare, rather than in power, which a phone speaker lacks.
+
+   The cost is lower spectral efficiency than PSK or QAM in a clean channel. OFDM remains on the roadmap for quiet rooms.
+
 **Decision.** Multi-tone FSK in the style of ggwave: 6 or 8 simultaneous tones, each choosing 1 of 16 frequencies (4 bits). Every tone sits on an exact FFT bin of a 1 024-sample frame at 44.1 kHz (43.066 Hz spacing), so tones are orthogonal and phase-continuous. The band is about 1.2–7.2 kHz.
 
 **Consequences.** Standard reaches 345 b/s raw and 27 B/s net *after* RS parity and sync, about 4× the old modem, with error correction. The cost is audible chords and a need for per-frame sync (ADR-12).
@@ -194,7 +211,7 @@ Back to the [documentation index](../README.md).
 
 **Decision.** All profiles share the same marker. The receiver runs one frame-sync per profile. The first profile whose frame passes RS, the CRC *and* the header's `blockLen` check becomes the lock. After 4 markers with no good frame the lock goes stale and all profiles are heard again. After each completed message the receiver reopens to all profiles.
 
-**Consequences.** The receiver never has to be configured, and the sender can switch to Rugged in a noisy room with no coordination. CPU use is about four frame-syncs while hunting, then one.
+**Consequences.** The receiver never has to be configured, and the sender can switch to Rugged in a noisy room with no coordination. CPU use is about four frame-syncs while hunting, then one. (ADR-20 adds two Silent profiles with their own marker, making six.)
 
 ---
 
@@ -204,7 +221,7 @@ Back to the [documentation index](../README.md).
 - **Light:** stream fresh symbols until **Stop**, with a 10-minute safety cap. The chat status is **sent**, not delivered. The result screen offers "Receiver shows DONE" and "Resume streaming".
 - **Sound:** stream until Stop or a symbol budget of `max(6K, K+24)`, with a progress target of `⌈1.25K⌉ + 2`.
 
-**Consequences.** The user decides when to stop, based on the receiver's DONE. Receivers ignore the sender's "tail" for sessions they have completed. (Known inconsistency: Sound sends are currently marked *delivered*; see [Known Issues](../project/KNOWN_ISSUES.md).)
+**Consequences.** The user decides when to stop, based on the receiver's DONE. Receivers ignore the sender's "tail" for sessions they have completed. Sound sends are also marked **sent**; earlier builds marked them *delivered* (see [Known Issues 2.1](../project/KNOWN_ISSUES.md)).
 
 ---
 
@@ -228,7 +245,7 @@ Back to the [documentation index](../README.md).
 
 **Decision.** Every modem parameter was chosen from simulations that drive the *production* decoders:
 - **Camera model:** perspective, rotation, supersampling, Gaussian and motion blur, contrast/gamma, glare, noise and bezel, in good/typical/hard tiers.
-- **Room model:** clock drift, multipath, reverb tail, speaker roll-off stages and noise at a target SNR, in easy/room/noisy/hostile tiers.
+- **Room model:** clock drift, multipath, reverb tail, speaker roll-off stages and noise at a target SNR, in easy/room/noisy/hostile tiers; plus hand wobble and simulated talkers in four near-ultrasonic tiers (ultra desk, ultra hand, chatter, crowd).
 
 **Consequences.** Design choices are reproducible and regression-tested (`flutter test`). Real devices still vary, so rehearsal on the target phones remains essential.
 
@@ -249,3 +266,61 @@ Back to the [documentation index](../README.md).
 **Decision.** Received photos and videos are saved automatically to the album **Adaptive Comm** via the `gal` plugin. Saving is idempotent per message ID and exposes Save / Saving… / Saved / Retry states. It needs no permission on Android 10+, `WRITE_EXTERNAL_STORAGE` (maxSdk 29) on older Android, and photo-library add permission on iOS.
 
 **Consequences.** Users keep what they receive without extra taps. WebM can't be saved to iOS Photos.
+
+---
+
+## ADR-20: A Silent (near-ultrasonic) band for Sound
+
+**Context.** Audible Sound transfers are noticeable and get drowned out by talking. A comparable app sends two-tone FSK at 19 and 20 kHz (60 ms per bit, XOR checksum), which people can't hear and voices don't reach. Android's CDD defines near-ultrasound support for 18.5–20 kHz on the voice-recognition microphone source.
+
+**Options.**
+1. Copy the two-tone design: simple, but 60 ms per bit, a 255-byte limit and no error correction.
+2. Move the existing chord modem up unchanged: fast on paper, but two simultaneous near-ultrasonic tones produce an audible difference tone through a small speaker's non-linearity, which defeats the point.
+3. Keep the whole stack (frame format, Reed-Solomon, fountain, auto-detection) and give it a second tone plan.
+
+**Decision.** Option 3. `AcousticBand.nearUltrasonic` configures the same `MtFskCodec`:
+- One 16-ary tone per symbol (`groups = 1`) in 18.3–19.9 kHz, on every second bin (86 Hz apart) so hand-held Doppler doesn't blur neighbours.
+- A guard frame at the start of each symbol, ignored by the demodulator, so the decision is made after echoes of the previous tone decay. This lifted hand-held frame recovery from 2/18 to 17/18 in simulation.
+- A sequential marker (bin 424, then bin 427) whose aligned score is 512, the same as the audible marker's, so the lock threshold is unchanged.
+- A 16 kHz 4th-order high-pass in front of the Silent frame-syncs. Without it, speech energy inflates the marker-score denominator; with it, crowd recovery rose from 4/18 to 15/18.
+- Media playback instead of the voice-call path, a voice-recognition microphone source, 0.8 peak level and faded burst edges.
+- Two profiles, Silent (46 ms symbols, 5.0 B/s) and Silent Robust (70 ms, 3.4 B/s), chosen by a parameter sweep over four near-ultrasonic room scenarios.
+
+**Consequences.** Silent is about as robust as Rugged at half its speed, can't be heard by most adults, and shrugs off chatter. It is slower than the audible profiles and needs phones within about half a metre. It only works on phones whose speaker and microphone pass 19 kHz, which the simulator can't predict, so the Receive screen shows a dedicated *Silent band* meter. The codec's defaults keep the audible plan bit-for-bit, and receivers listen for both bands at once. For a three-letter text, two-tone FSK is 0.5 s quicker (4.3 s against one 4.8 s frame); from about five characters on, Silent is faster, and it has Reed-Solomon and an 8 KiB limit. Details: [Sound Channel §14](../channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic).
+
+---
+
+## ADR-21: Text and link envelopes without name or MIME type
+
+**Context.** Every text used to carry the name `message.txt` and MIME `text/plain` (links: `link.url`, `text/uri-list`): 21 bytes that the type byte already implies. On Sound a 17-character text became a 45-byte envelope, two Silent frames instead of one.
+
+**Decision.** `encodeText` and `encodeLink` leave both fields empty. `overheadBytes()` and `ComposePayload.envelopeBytes` report the real on-air size without building the envelope.
+
+**Consequences.** Text overhead drops from 28 to 7 bytes: "sos" is 10 B, a 17-character text 24 B. Short texts fit one Sound frame on every profile, and Vibration saves about 40 s per message. Older receivers already read empty fields as absent, so they decode the new envelopes unchanged. Received texts show no file name, as before.
+
+---
+
+## ADR-22: Live frequency readout from the tone schedule and a throttled FFT
+
+**Context.** Users and demo audiences want to see, in Hz or kHz, what the sender is playing and what the receiver hears. That matters most for the Silent band, where there's nothing to hear. The existing meters show levels, not frequencies.
+
+**Options for the sender.**
+1. Analyse the WAV (or the microphone) on the sending phone. This costs an FFT per tick, and self-listening is impossible anyway because the microphone is off during playback.
+2. Record the schedule of tones while the burst is rendered, and look it up against the playback clock.
+
+**Options for the receiver.**
+1. Run Goertzel on every tone bin of every profile. This only sees the modem's own frequencies and says nothing about noise or a whistle.
+2. Run a full FFT on every microphone chunk. That is wasted work, because the screen updates at most every 80 ms.
+3. Keep the latest 1 024 samples in a ring and run one FFT when the UI tick fires.
+
+**Decision.** Sender option 2 and receiver option 3.
+- **Sender:** `MtFskCodec.describe` writes a `ToneTimeline` using the same `_markerBins` and `_symbolBins` helpers as `encode`, so the readout can't drift from the audio. The modem builds a timeline only when `transmit` is given `onBurst`.
+- **Receiver:** `SpectrumAnalyzer` uses a Hann window, a radix-2 FFT with precomputed twiddles, peaks at least 18 dB above the median bin with leakage suppression, and parabolic interpolation.
+- **State:** both sides publish through a dedicated `acousticSpectrumState` notifier (ADR-16) to one reusable `LiveToneMeter` with `.sending()` and `.hearing()` variants.
+- **Existing code:** no decoding path changed (ADR-15).
+
+**Consequences.**
+- The sender readout is exact and costs a binary search per 50 ms tick.
+- The receiver readout costs at most 12.5 FFTs a second. It shows any sound, not only the modem's tones, so it doubles as a microphone and speaker diagnostic.
+- The sender's clock starts when `AudioPlayer.play()` returns, so output latency makes it run slightly ahead of the audio (see [Known Issues](../project/KNOWN_ISSUES.md)).
+- Audible tones closer than 4 bins merge into one reported peak on the receiver. The sender still lists them all.

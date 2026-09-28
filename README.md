@@ -2,15 +2,39 @@
 
 # Adaptive Physical Communication System (APCS)
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter" alt="Flutter 3.41">
+  <img src="https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart" alt="Dart 3.11">
+  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-lightgrey" alt="Platforms: Android, iOS and web">
+  <img src="https://img.shields.io/badge/radio%20in%20data%20path-none-success" alt="No radio in the data path">
+</p>
+
+<p align="center">
+  <a href="docs/README.md"><b>Documentation</b></a> ·
+  <a href="docs/getting-started/USER_GUIDE.md">User guide</a> ·
+  <a href="docs/getting-started/INSTALLATION.md">Installation</a> ·
+  <a href="docs/getting-started/FAQ.md">FAQ</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="docs/project/CHANGELOG.md">Changelog</a>
+</p>
+
 Send text, links, photos and short videos **from one phone to another using only light, sound or vibration**, with no Internet, Wi-Fi, Bluetooth, NFC, mobile data or cloud anywhere in the data path.
 
 - **Light**: the sender's screen plays an animated stream of QR codes; the receiver's camera reads them. One screen can feed any number of cameras at once.
-- **Sound**: the sender's speaker plays multi-tone chords; the receiver's microphone decodes them. Works across a table, and one-to-many as well.
+- **Sound**: the sender's speaker plays multi-tone chords; the receiver's microphone decodes them. Works across a table, and one-to-many as well. A **Silent** band sends the same frames at 18–20 kHz, which most adults can't hear.
 - **Vibration**: the sender's vibration motor pulses; the receiver's accelerometer feels them. Contact only, one-to-one.
 
 It is a Flutter app (Dart) for **Android, iOS and Chrome (web)**. Behind the simple Send/Receive screens sit a rateless **fountain code**, a camera-tuned **QR pipeline**, a **multi-tone FSK modem with Reed-Solomon error correction**, a **reliable packet transport**, and an **adaptive channel-selection engine** with a full simulation lab.
 
-This README is the complete technical manual. It explains what every part does, how it works, the exact numbers it uses, and how those numbers were derived.
+<p align="center">
+  <img src="docs/images/home.png" alt="Home screen with Send and Receive buttons" width="200">
+  <img src="docs/images/send-light-streaming.png" alt="Sender streaming an animated QR code over Light" width="200">
+  <img src="docs/images/receive-sound.png" alt="Receiver listening over Sound, with the Hearing now frequency readout and level meters" width="200">
+</p>
+<p align="center"><em>Home screen, sending over Light, and receiving over Sound (web build in a phone-sized window).</em></p>
+
+This README is the complete technical manual. It explains what every part does, how it works, the exact numbers it uses, and how those numbers were derived. If you only want to use the app, start with the [User Guide](docs/getting-started/USER_GUIDE.md). The [documentation set](docs/README.md) splits the same material by topic and adds byte-level examples, derivations and developer references.
 
 ---
 
@@ -41,6 +65,8 @@ This README is the complete technical manual. It explains what every part does, 
 23. [Glossary](#23-glossary)
 24. [References](#24-references)
 
+Also: [Contributing](#contributing) · [Security](#security) · [Citing this project](#citing-this-project) · [Acknowledgements](#acknowledgements) · [License](#license)
+
 ---
 
 ## 1. At a glance
@@ -51,7 +77,7 @@ This README is the complete technical manual. It explains what every part does, 
 | Receiver | Camera, 1.5× zoom | Microphone, 44.1 kHz | Accelerometer |
 | Topology | One-to-many broadcast | One-to-many broadcast | One-to-one, phones touching |
 | Typical range | 15–25 cm | Across a table (≈0.3–2 m) | Contact |
-| Payload rate | ≈1.3–2.5 KB/s effective | 11 / 18 / 27 / 36 B/s (Rugged / Safe / Standard / Fast) | ≈0.5 B/s |
+| Payload rate | ≈1.3–2.5 KB/s effective | 11 / 18 / 27 / 36 B/s (Rugged / Safe / Standard / Fast); inaudible 3.4 / 5.0 B/s (Silent Robust / Silent) | ≈0.5 B/s |
 | Max message | 8 MiB (practical: < 200 KB) | 8 KiB direct (practical: ≤ 2 KB) | Short text |
 | Error handling | Rateless LT fountain + CRC-32 per frame | Reed-Solomon per frame (errors + erasures) + CRC-16 + LT fountain | CRC-32 packets + ACK/retransmit |
 | Best for | Photos, video, files | Short text, tiny images | A few characters |
@@ -87,10 +113,13 @@ Core ideas in one line each:
 ### Sound channel
 - Multi-tone FSK: 6 or 8 tones at once, each carrying 4 bits, between about 1.2 and 7.2 kHz.
 - Four speed profiles (Rugged, Safe, Standard, Fast). **The receiver detects the sender's profile automatically.**
+- **Silent band** (Silent, Silent Robust): one near-ultrasonic tone at a time between 18.3 and 19.9 kHz, with echo-guard frames and a 16 kHz receive filter. The receiver listens for both bands at once.
+- A **Frame to be sent** card shows how the frame's airtime splits into marker, header, message, CRC and parity, with tone range, frame time and frame count.
 - Per-frame sync burst with leading-edge detection, so it isn't fooled by loud reflections.
 - Reed-Solomon GF(256) with errors-and-erasures decoding, a confidence-driven erasure retry (GMD), and CRC-16.
 - Rateless LT fountain across frames, shared with the Light channel.
-- Live meters for mic input, tone signal, blocks recovered and frames too damaged.
+- Live meters for mic input, tone signal, the 18–20 kHz band, blocks recovered and frames too damaged.
+- **Live frequency readout:** the sender shows **Sending now** (the exact tones on air, in kHz) and the receiver shows **Hearing now** (the strongest frequencies its microphone picks up), each with a 0–22 kHz spectrum strip. When sound is getting through, both phones show the same kHz.
 
 ### Vibration channel
 - Pulse-width keying: short pulse = 0, long pulse = 1, detected by the accelerometer against an adaptive gravity baseline.
@@ -114,8 +143,10 @@ Core ideas in one line each:
 
 ### Run
 ```bash
+git clone https://github.com/harsharaj-s/adaptive_physical_communication_system.git
+cd adaptive_physical_communication_system
 flutter pub get
-flutter test                 # full test suite (~87 tests)
+flutter test                 # full test suite (101 tests)
 flutter run                  # on a connected Android/iOS phone (all channels)
 flutter run -d chrome        # web: Light + Sound via webcam, speaker and mic
 ```
@@ -140,7 +171,7 @@ Install the **same build on both phones**. The Light frame format is versioned (
 3. **Continue to send**, then choose **Light**, **Sound** or **Vibrate**.
 4. Adjust the channel options:
    - **Light**: "QR density" (Auto recommended). The line under the preview shows size, bytes per frame and estimated time.
-   - **Sound**: "Sound speed" chips (Fast / Standard / Safe / Rugged, each showing bytes per second) and an estimate.
+   - **Sound**: a "Sound band" switch (Audible / Silent), speed chips for that band (each showing bytes per second), the *Frame to be sent* card and an estimate.
    - **Vibrate**: phones must touch.
 5. Tap **Show QR & send**, **Play & send** or **Start vibration**.
 6. Light and Sound stream until you stop them. Tap **Stop** once the receiver shows DONE, or **Resume streaming** if it hasn't finished.
@@ -148,7 +179,7 @@ Install the **same build on both phones**. The Light frame format is versioned (
 ### Receiving
 1. **Home → Receive**, then pick the same channel as the sender.
 2. **Light**: hold the phone 15–25 cm from the sender's screen with the whole QR inside the corner brackets. Tap the preview to refocus and use **2×** if the QR looks small. The HUD goes SCAN → LOCK → DONE.
-3. **Sound**: allow the microphone. The card shows "Receiving over sound · \<profile\>", blocks recovered and damaged frames.
+3. **Sound**: allow the microphone. **Hearing now** shows the frequency the microphone picks up. The card shows "Receiving over sound · \<profile\>", blocks recovered and damaged frames.
 4. **Vibrate**: press the phones together firmly.
 5. The message appears in a card. Photos and videos are saved to the Gallery (album *Adaptive Comm*). **Clear & keep listening** gets ready for the next message.
 
@@ -164,7 +195,7 @@ A recipe that works reliably in front of an audience:
    - Receiver: Receive → Light. Hold 15–25 cm away, QR inside the brackets, elbows resting on the table. Watch LOCK and the symbol count climb.
    - A 5 KB photo finishes in about 3–5 s; a 78 KB video in about 40 s.
    - When the receiver shows **DONE** the video plays with sound and is in the Gallery. Tap **Stop** on the sender.
-3. **Sound demo:** send a short text such as "Hello from sound!" (45-byte envelope, one block) on **Standard**, speaker facing the receiver's microphone. It takes about 10 s. In a noisy hall use **Rugged**; the receiver follows automatically.
+3. **Sound demo:** send a short text such as "Hello from sound!" (24-byte envelope, one block) on **Standard**, speaker facing the receiver's microphone. It takes about 10 s. In a noisy hall use **Rugged**; the receiver follows automatically.
 4. **If a transfer stalls:** nothing is lost. Re-aim (Light) or move closer (Sound). The receiver keeps its progress; the sender can **Resume streaming**.
 5. **Explain while it runs:** point at the HUD. *NEW* counts useful symbols, *DUP* repeated ones, *DEC* successful QR reads per second. The file completes once it has about as many useful symbols as it has pieces.
 
@@ -258,7 +289,7 @@ Every message, whatever the channel, is first packed into this envelope:
 | 7+nameLen+mimeLen | rest | Raw content bytes, running to the end of the envelope |
 
 - **Overhead** is `7 + nameLen + mimeLen` bytes.
-  - Text is sent as `message.txt` / `text/plain`, so its overhead is 28 bytes. "sos" becomes a 31-byte envelope.
+  - Text and links are sent with an empty name and MIME type (the type byte already says what they are), so their overhead is 7 bytes. "sos" becomes a 10-byte envelope.
   - A link uses `link.url` / `text/uri-list`, also 28 bytes.
 - **Validation** (`looksComplete`):
   - The type must be valid and the name/MIME lengths must be in bounds.
@@ -612,9 +643,9 @@ Main files:
 
 | Area | Files |
 |---|---|
-| Modem and codecs | `lib/core/physical/acoustic/`: `mt_fsk_codec.dart`, `acoustic_frame_sync.dart`, `acoustic_fountain_frame.dart`, `reed_solomon.dart`, `acoustic_fountain_modem.dart`, `acoustic_tx_profile.dart` |
+| Modem and codecs | `lib/core/physical/acoustic/`: `mt_fsk_codec.dart`, `acoustic_frame_sync.dart`, `acoustic_fountain_frame.dart`, `reed_solomon.dart`, `acoustic_fountain_modem.dart`, `acoustic_tx_profile.dart`, `biquad_filter.dart`, `tone_timeline.dart`, `spectrum_analyzer.dart` |
 | Channel | `lib/core/channels/hardware_channels.dart` |
-| UI | `lib/ui/widgets/acoustic_transfer_hud.dart` |
+| UI | `lib/ui/widgets/acoustic_transfer_hud.dart`, `lib/ui/widgets/live_tone_meter.dart`, `lib/core/platform/acoustic_spectrum_state.dart` |
 
 ### 10.1 Pipeline
 
@@ -656,6 +687,7 @@ Band plan:
 - **Clip-free amplitude.** Each tone gets `0.98 / (number of simultaneous tones)`: 0.49 for the two marker tones, 0.163 for G = 6 and 0.1225 for G = 8. Even the worst-case in-phase sum stays under full scale.
 - **Nibble mapping.** Group g of symbol s carries nibble `s·G + g`. An even nibble is the high half of a byte and an odd one the low half, so each byte spans two adjacent groups.
 - **Band.** About 1.2–7.2 kHz is where phone speakers and microphones are reasonably flat. Below 1 kHz tiny speakers are weak; above 8 kHz roll-off and AGC distortion grow.
+- **Silent band.** The two Silent profiles move the same codec to 18.3–19.9 kHz (bins 431–461, every second bin, sync tones at bins 424 and 427). They play one tone at a time, because two simultaneous near-ultrasonic tones produce an audible difference tone in a small speaker. Details: [Sound Channel §14](docs/channels/SOUND_CHANNEL.md#14-silent-band-near-ultrasonic).
 
 ### 10.3 Demodulation: Goertzel with soft decisions
 
@@ -700,7 +732,7 @@ Unrelated audio scores in the tens, so the lock threshold is **8.0**. Requiring 
 4. **Fine alignment:** try offsets of ±`min(symbolSamples/8, 512)` in 64-sample steps and keep the one that maximises tone separation on the first symbol (3 groups).
 5. Demodulate the codeword, decode it, and advance past the frame.
 
-**Automatic profile detection:** all four profiles share the same marker. The receiver runs one frame-sync per profile in parallel, and the first profile whose frame survives Reed-Solomon, the CRC *and* the header's `blockLen` check becomes the lock. After 4 markers with no good frame the lock is declared stale and all profiles are heard again. After each message the receiver reopens to every profile, because the next sender might pick another speed.
+**Automatic profile detection:** the four audible profiles share one marker, and the two Silent profiles share another (bins 424 and 427, played one after the other instead of together; high-passed at 16 kHz before scoring). The receiver runs one frame-sync per profile in parallel, six in total, and the first profile whose frame survives Reed-Solomon, the CRC *and* the header's `blockLen` check becomes the lock. After 4 markers with no good frame the lock is declared stale and all profiles are heard again. After each message the receiver reopens to every profile, because the next sender might pick another speed.
 
 ### 10.5 Acoustic frame format
 
@@ -758,19 +790,22 @@ This let the hardest room test go from decoding *nothing* to passing.
 
 ### 10.7 Profiles and rate calculation
 
-| | Rugged | Safe | Standard | Fast |
-|---|---|---|---|---|
-| Tone groups G | 6 | 6 | 8 | 8 |
-| Frames per symbol F | 6 | 4 | 4 | 3 |
-| Symbol length | 139.3 ms | 92.9 ms | 92.9 ms | 69.7 ms |
-| Bits / symbol | 24 | 24 | 32 | 32 |
-| Raw bit rate | 172 b/s | 258 b/s | 345 b/s | 459 b/s |
-| Block L / parity P | 32 / 20 | 48 / 24 | 64 / 24 | 64 / 24 |
-| Codeword | 63 B | 83 B | 99 B | 99 B |
-| Data symbols | 21 | 28 | 25 | 25 |
-| **Frame time** | **2.972 s** | **2.647 s** | **2.368 s** | **1.788 s** |
-| **Net payload rate** | **10.8 B/s** | **18.1 B/s** | **27.0 B/s** | **35.8 B/s** |
-| Hint | loud room, metres apart | background chatter | normal room, across a table | quiet room, phones touching |
+| | Rugged | Safe | Standard | Fast | Silent Robust | Silent |
+|---|---|---|---|---|---|---|
+| Band | Audible | Audible | Audible | Audible | 18.3–19.9 kHz | 18.3–19.9 kHz |
+| Tone groups G | 6 | 6 | 8 | 8 | 1 | 1 |
+| Frames per symbol F | 6 | 4 | 4 | 3 | 3 (1 guard) | 2 (1 guard) |
+| Symbol length | 139.3 ms | 92.9 ms | 92.9 ms | 69.7 ms | 69.7 ms | 46.4 ms |
+| Bits / symbol | 24 | 24 | 32 | 32 | 4 | 4 |
+| Raw bit rate | 172 b/s | 258 b/s | 345 b/s | 459 b/s | 57 b/s | 86 b/s |
+| Block L / parity P | 32 / 20 | 48 / 24 | 64 / 24 | 64 / 24 | 24 / 16 | 24 / 16 |
+| Codeword | 63 B | 83 B | 99 B | 99 B | 51 B | 51 B |
+| Data symbols | 21 | 28 | 25 | 25 | 102 | 102 |
+| **Frame time** | **2.972 s** | **2.647 s** | **2.368 s** | **1.788 s** | **7.152 s** | **4.783 s** |
+| **Net payload rate** | **10.8 B/s** | **18.1 B/s** | **27.0 B/s** | **35.8 B/s** | **3.4 B/s** | **5.0 B/s** |
+| Hint | loud room, metres apart | background chatter | normal room, across a table | quiet room, phones touching | inaudible, weak speaker or a loud crowd | inaudible 18–20 kHz, phones within arm's reach |
+
+The guard frame at the start of each Silent symbol is ignored by the demodulator, so echoes of the previous tone have died away before the decision.
 
 **Worked calculation, Standard:**
 
@@ -803,18 +838,22 @@ Rugged gives up speed for robustness in three ways: longer symbols (more energy 
 - **Rateless:** fresh LT symbols until **Stop**, with a safety cap of `max(6K, K+24)` symbols.
 - **Progress bar target:** `ceil(1.25·K) + 2` symbols.
 - **Estimate:** `(ceil(1.25·K) + 2) × frameTime`.
-- **Audio session:** speakerphone on, stay awake, voice-communication usage (Android); play-and-record with the loudspeaker as default output (iOS).
+- **Audio session (Audible):** speakerphone on, stay awake, voice-communication usage (Android); play-and-record with the loudspeaker as default output (iOS).
+- **Audio session (Silent):** plain media playback, stay awake (Android); play-and-record with the loudspeaker as default output and no Bluetooth (iOS). The voice-call path would filter out 18–20 kHz.
+- **Bursts** start and end with 256-sample raised-cosine fades, and **Stop** cuts the current burst immediately.
+- **Live readout:** while a burst is rendered, `MtFskCodec.describe` records a `ToneTimeline` of the same segments `encode` writes. The clock starts when playback starts, and **Sending now** shows the segment at the elapsed time, refreshed every 50 ms.
 
 ### 10.9 Receive loop
 
-- `record` streams PCM16 mono at 44.1 kHz from the voice-communication source. It is converted to float (÷32768) and fanned out to the frame-syncs.
-- **Meters:** input level = clamp(RMS × 12). The tone signal rises during a transfer.
+- `record` streams PCM16 mono at 44.1 kHz from the Android voice-recognition source, which must have noise suppression and AGC off and a flat response, including 18.5–20 kHz on devices that claim near-ultrasound support. It is converted to float (÷32768) and fanned out to the frame-syncs. Silent profiles' syncs apply a 16 kHz high-pass first so voices don't bury the marker.
+- **Meters:** input level = clamp(RMS × 12). The tone signal rises during a transfer. A separate *Silent band 18–20 kHz* meter shows RMS above 16 kHz.
+- **Hearing now:** a 1024-point Hann-windowed FFT (43 Hz bins) over the latest audio, run only on the 80 ms UI tick. It reports up to 8 peaks at least 18 dB above the median bin, each placed to a few hertz by parabolic interpolation, plus 96 band levels for the spectrum strip.
 - **Phases:** listening → tones detected (tone > 0.12) → decoding → decoded.
 - The card shows "*x* of *K* blocks · *n* frames read · *m* too damaged". Damaged frames are counted only while locked to a profile, because while hunting every wrong profile "rejects" every frame.
 
 ### 10.10 Room simulator and results
 
-`test/acoustic_channel_sim.dart` processes the transmitted audio through clock drift (linear resampling), multipath taps, a reverb tail (6 echoes spaced 35 ms apart), cascaded one-pole low-pass "speaker roll-off" stages (each about −3 dB at 3.1 kHz) and Gaussian noise at a target SNR:
+`test/acoustic_channel_sim.dart` processes the transmitted audio through clock drift (Catmull-Rom cubic resampling, optionally with hand wobble), multipath taps, a reverb tail (6 echoes spaced 35 ms apart), cascaded one-pole low-pass "speaker roll-off" stages (each about −3 dB at 3.1 kHz) and Gaussian noise at a target SNR:
 
 | Scenario | SNR | Reverb | Roll-off stages | Clock drift | Multipath taps |
 |---|---|---|---|---|---|
@@ -823,12 +862,15 @@ Rugged gives up speed for robustness in three ways: longer symbols (more energy 
 | noisy room | 6 dB | 0.45 | 4 | 200 ppm | 5 |
 | hostile | 2 dB | 0.55 | 6 (≈ −47 dB at 7.2 kHz) | 400 ppm | 7 |
 
+Four near-ultrasonic scenarios test the Silent band: *ultra desk*, *ultra hand* (4 dB SNR plus 500 ppm hand wobble), *chatter* and *crowd* (three simulated talkers 6 dB and 15 dB louder than the tones). See [Testing §4.2](docs/development/TESTING.md).
+
 Verified in the tests:
-- Every profile delivers a 415-byte file through "room".
+- Every audible profile delivers a 415-byte file through "room" (Rugged 41.6 s, Fast 14.3 s).
 - Safe delivers a text through "noisy room".
-- **Rugged delivers "sos" through "hostile"** (41.6 s of audio = 14 frames).
+- **Rugged delivers "sos" through "hostile"** (5.9 s).
 - A 1.2 KB file (K = 25) completes through "noisy room" in close to the minimum number of frames.
-- One receiver correctly auto-detects Rugged, Standard and Safe senders in turn.
+- One receiver correctly auto-detects Rugged, Silent, Standard and Safe senders in turn.
+- **Silent delivers "Meet at gate 3"** through every near-ultrasonic scenario, crowd included, and puts under −59 dB of its energy below 16 kHz.
 
 ---
 
@@ -1048,12 +1090,12 @@ Home
 
 - **Transmit screen:**
   - Ready state: channel tips, the density or speed picker, and an ETA.
-  - While sending: the full-screen white QR overlay with **Stop** (Light), a progress card with Stop (Sound), or a pulsing icon (Vibrate).
+  - While sending: the full-screen white QR overlay with **Stop** (Light), a progress card with Stop and the **Sending now** kHz readout (Sound), or a pulsing icon (Vibrate).
   - Back navigation is blocked while transmitting; pressing back cancels instead.
 - **Receive screen:**
   - A status banner with per-channel wording.
   - **Light:** camera preview with aim brackets, zoom chips, tap-to-focus, the HUD and a completion card showing KB, seconds and KB/s.
-  - **Sound:** mic and tone meters, a progress card and an **Enable microphone** button.
+  - **Sound:** the **Hearing now** kHz readout with a spectrum strip, mic, tone and *Silent band 18–20 kHz* meters, a progress card and an **Enable microphone** button.
   - **Vibrate:** a signal percentage.
 - **Received content card:** text, link (Open link), image (tap for full screen), video (auto-play, loop, play/pause, time) and file, plus the Gallery button.
 - **Design:** dark Material 3 with seed colour `#3B82F6` and a responsive layout (phone < 600 px < tablet ≤ 1024 px < desktop).
@@ -1109,7 +1151,7 @@ Home
 ## 18. Testing and verification
 
 ```bash
-flutter test                                    # everything (~87 tests)
+flutter test                                    # everything (101 tests: 100 pass, 1 skipped)
 flutter test test/optical_density_sweep_test.dart
 OPTICAL_SWEEP=1 flutter test test/optical_density_sweep_test.dart   # print the full density table
 flutter analyze                                 # static analysis (clean)
@@ -1122,8 +1164,9 @@ flutter analyze                                 # static analysis (clean)
 | `fountain_qr_roundtrip_test.dart` | Real QR render → rasterise → real zxing2 → LT: text, a 40 KB photo and a 30 KB video with 30% loss; QR versions ≤ 25; production decoder loss < 1%; hostile binary bytes |
 | `optical_density_sweep_test.dart` | Auto density thresholds; decode-rate floors in the "typical" camera; 2 KB completes with 30% loss and at "hard ×1.5"; the old 800 B default < 50% |
 | `fountain_benchmark_test.dart` | 365 KB (K = 1133) recovers at 20% loss; decoder > 40 KB/s; profile ladder |
-| `acoustic_channel_test.dart` | Profile rates and geometry; every profile through "room"; Safe through "noisy"; Rugged through "hostile" |
-| `acoustic_modem_test.dart` | WAV loopback; rateless early stop; noisy multi-burst 1.2 KB; automatic profile detection; fixed-profile isolation; PCM16 round trip |
+| `acoustic_channel_test.dart` | Profile rates and geometry; every audible profile through "room"; Safe through "noisy"; Rugged through "hostile"; Silent tones stay in 18–20 kHz with under −40 dB below 16 kHz; Silent through the near-ultrasonic scenarios; Silent Robust through a crowd; odd-group packing |
+| `acoustic_live_tone_test.dart` | The sender's tone schedule matches the generated audio sample for sample in every profile and every burst; the receiver's FFT finds an 18 906 Hz tone within 8 Hz and every tone of a chord |
+| `acoustic_modem_test.dart` | WAV loopback; rateless early stop; noisy multi-burst 1.2 KB; automatic profile detection across both bands; fixed-profile isolation; PCM16 round trip; Silent hand-held loopback |
 | `reed_solomon_test.dart` | t errors for P = 4…32; bursts; parity-region errors; miscorrection < 5%; 2e + f = P for errors + erasures; 18 erasures beat 10-error limit |
 | `physical_codecs_test.dart` | Legacy FSK, Goertzel, stream decoder, vibration codec thresholds |
 | `protocol_test.dart` | CRC-32; packet encode/decode; corruption rejected |
@@ -1149,7 +1192,7 @@ Estimates use the app's own formulas: Light with Auto density and simulated capt
 
 | Content | Envelope | Block | K | Estimate |
 |---|---|---|---|---|
-| Text message (100 chars) | ≈130 B | 160 | 1 | 1 s |
+| Text message (100 chars) | 107 B | 160 | 1 | 1 s |
 | 2 KB photo sample | ≈2.1 KB | 160 | 13 | 2 s |
 | 5 KB photo sample | ≈5.1 KB | 160 | 33 | 5 s |
 | 20 KB photo sample | ≈20.3 KB | 330 | 62 | 10 s |
@@ -1158,17 +1201,17 @@ Estimates use the app's own formulas: Light with Auto density and simulated capt
 
 ### Sound
 
-| Content | Envelope | Rugged | Safe | Standard | Fast |
-|---|---|---|---|---|---|
-| "sos" | 31 B | K=1 → 4 fr → 12 s | K=1 → 4 fr → 11 s | K=1 → 4 fr → 9.5 s | K=1 → 4 fr → 7 s |
-| 100-char text | ≈128 B | K=4 → 7 fr → 21 s | K=3 → 6 fr → 16 s | K=2 → 5 fr → 12 s | K=2 → 5 fr → 9 s |
-| 2 KB photo | ≈2.1 KB | K=66 → 85 fr → 4.2 min | K=44 → 57 fr → 2.5 min | K=33 → 44 fr → 1.7 min | K=33 → 44 fr → 1.3 min |
+| Content | Envelope | Rugged | Safe | Standard | Fast | Silent |
+|---|---|---|---|---|---|---|
+| "sos" | 10 B | K=1 → 4 fr → 12 s | K=1 → 4 fr → 11 s | K=1 → 4 fr → 9.5 s | K=1 → 4 fr → 7 s | K=1 → 4 fr → 19 s |
+| 100-char text | 107 B | K=4 → 7 fr → 21 s | K=3 → 6 fr → 16 s | K=2 → 5 fr → 12 s | K=2 → 5 fr → 9 s | K=5 → 9 fr → 43 s |
+| 2 KB photo | ≈2.1 KB | K=66 → 85 fr → 4.2 min | K=44 → 57 fr → 2.5 min | K=33 → 44 fr → 1.7 min | K=33 → 44 fr → 1.3 min | K=88 → 112 fr → 8.9 min |
 
-(fr = frames; each frame lasts the profile's frame time from §10.7.)
+(fr = frames; each frame lasts the profile's frame time from §10.7; Silent frames last 4.78 s.) These are the pessimistic `⌈1.25·K⌉ + 2` targets. When every frame lands, a receiver finishes after exactly K frames, so "sos" takes one frame: 2.4 s on Standard, 4.8 s on Silent.
 
 ### Vibration
 
-A 30-byte envelope ("hi") becomes a 58-byte packet = 472 bits × ≈0.24 s ≈ **2 minutes**. Keep it to a word or two.
+A 9-byte envelope ("hi") becomes a 37-byte packet = 304 bits × ≈0.24 s ≈ **73 s**. Keep it to a word or two.
 
 ---
 
@@ -1177,7 +1220,7 @@ A 30-byte envelope ("hi") becomes a 58-byte packet = 472 bits × ≈0.24 s ≈ *
 **Physical limits:**
 - Line of sight and steady hands for Light; tolerable noise for Sound; firm contact for Vibration.
 - Physical signals can be seen or heard by anyone nearby. There is **no encryption** yet.
-- Sound is audible (about 1.2–7.2 kHz) and slow. Use it for text and tiny images.
+- Sound is slow. Use it for text and tiny images. Audible profiles can be heard (about 1.2–7.2 kHz); Silent profiles (18.3–19.9 kHz) can't, but they only work on phones whose speaker and microphone pass 19 kHz.
 
 **No back-channel on Light and Sound:**
 - The sender can't know when a receiver has finished, so it streams until you stop it and marks the message **sent**, not delivered.
@@ -1213,6 +1256,8 @@ A 30-byte envelope ("hi") becomes a 58-byte packet = 472 bits × ≈0.24 s ≈ *
 | Stuck at "x / K symbols" | Keep streaming. If the sender stopped, tap **Resume streaming**; the receiver kept its progress |
 | Sound: "too damaged" keeps rising | Volume up, speaker pointed at the mic, move closer, or pick **Rugged** |
 | Sound: nothing happens | Tap **Enable microphone**; check the app's microphone permission; the tone meter should move while the sender plays |
+| Sound Silent: the *Silent band* meter stays near zero | Media volume to maximum; swap the phones' roles; if neither works, one phone can't pass 19 kHz, so use **Audible** |
+| Sender's **Sending now** shows about 19 kHz but the receiver's **Hearing now** shows **—** | The 19 kHz tone isn't reaching the receiver's microphone: same fixes as the row above. If **Hearing now** shows the right kHz but nothing decodes, move closer, hold still, or pick a Robust or Rugged speed |
 | Photo not in the Gallery | Look for the album "Adaptive Comm"; tap **Retry save** on the received card; allow storage on Android ≤ 9 |
 | Video won't play on iPhone | Use the MP4 samples; iOS doesn't play or save WebM |
 | APK build fails downloading Gradle | Set `GRADLE_USER_HOME` to your normal `.gradle` folder (see §3) |
@@ -1235,7 +1280,7 @@ lib/
 │   ├── performance/                  Strategy comparator
 │   ├── physical/
 │   │   ├── fountain/                 LT codec, APCF frames, QR bitmap, FountainQrModem
-│   │   ├── acoustic/                 MT-FSK, frame sync, Reed-Solomon, frames, modem, profiles
+│   │   ├── acoustic/                 MT-FSK, frame sync, Reed-Solomon, frames, modem, profiles, filters, tone timeline, spectrum analyzer
 │   │   ├── csk/                      Legacy colour-shift-keying modem
 │   │   ├── optical_tx_profile.dart   Light profiles, Auto density, metrics
 │   │   ├── qr_gray_frame.dart        Y-plane crop
@@ -1256,7 +1301,12 @@ assets/samples/                       Demo photos and narrated explainer videos
 tool/                                 make_sample_media.py, make_explainer_videos.py, debug helpers
 test/                                 Unit, integration and simulation tests (+ camera and room models)
 android/ ios/ web/                    Platform projects (Android brightness channel in MainActivity.kt)
+docs/                                 Full documentation set (index: docs/README.md)
+.github/                              Issue forms and pull request template
 PROJECT_REPORT.md                     Academic-style project report
+CONTRIBUTING.md, CODE_OF_CONDUCT.md   How to contribute, and community rules
+SECURITY.md                           How to report a vulnerability privately
+CITATION.cff, LICENSE                 Citation metadata; MIT License
 ```
 
 ---
@@ -1277,6 +1327,8 @@ PROJECT_REPORT.md                     Academic-style project report
 | **Module** | One black or white square of a QR code |
 | **MT-FSK** | Multi-tone frequency-shift keying: several tones at once, each picking 1 of 16 frequencies |
 | **Goertzel** | Efficient single-frequency power detector |
+| **FFT** | Fast Fourier transform: the power at every frequency bin at once. Used only for the live **Hearing now** readout, not for decoding |
+| **dBFS** | Decibels relative to full scale: 0 dBFS is the loudest sine the audio format can hold, so real levels are negative |
 | **Reed-Solomon** | Byte-level error-correcting code over GF(256) |
 | **Erasure** | A byte known to be unreliable. It costs half as much parity to fix as an unknown error |
 | **GMD** | Generalised minimum distance decoding: retry with the least reliable bytes erased |
@@ -1297,8 +1349,26 @@ PROJECT_REPORT.md                     Academic-style project report
 7. ISO/IEC 18004:2015, *QR Code bar code symbology specification*.
 8. RFC 9285, *The Base45 Data Encoding* (considered for a future string-safe QR transport).
 
-For the academic write-up (abstract, objectives, literature survey), see [`PROJECT_REPORT.md`](PROJECT_REPORT.md).
+For the academic write-up (abstract, objectives, literature survey), see [`PROJECT_REPORT.md`](PROJECT_REPORT.md). The full reference list, including libraries and tools, is in [References](docs/project/REFERENCES.md).
+
+---
+
+## Contributing
+
+Bug reports, results from real phones, documentation fixes and code are all welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), which explains how to report issues and open pull requests, and then the [developer guide](docs/development/CONTRIBUTING.md) for code style and the rules that keep two phones compatible. Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+APCS doesn't encrypt or authenticate transfers; treat everything you send as public. The [threat model](docs/operations/SECURITY.md) explains why and how encryption could be added. To report a vulnerability, follow the [security policy](SECURITY.md) and don't open a public issue.
+
+## Citing this project
+
+If you use APCS in academic work, please cite it using the metadata in [CITATION.cff](CITATION.cff). On GitHub, select **Cite this repository** in the sidebar to get APA or BibTeX.
+
+## Acknowledgements
+
+APCS builds on open-source Flutter packages, notably [`qr`](https://pub.dev/packages/qr) and [`zxing2`](https://pub.dev/packages/zxing2) for QR codes, [`camera`](https://pub.dev/packages/camera), [`record`](https://pub.dev/packages/record) and [`audioplayers`](https://pub.dev/packages/audioplayers) for the hardware, and [`sensors_plus`](https://pub.dev/packages/sensors_plus) and [`vibration`](https://pub.dev/packages/vibration) for the Vibration channel. The full list is in [section 17](#dependencies), and the exact versions are pinned in `pubspec.yaml` and `pubspec.lock`.
 
 ## License
 
-MIT
+APCS is released under the [MIT License](LICENSE). Copyright © 2026 Harsharaj S.
