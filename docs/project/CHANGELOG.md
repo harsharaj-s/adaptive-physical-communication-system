@@ -42,8 +42,12 @@ Silent sound band, faster short texts, the live frequency readout, and the publi
 - A live frequency readout. While playing, the Send screen shows **Sending now**: the exact tones on air, in kHz. While listening, the Receive screen shows **Hearing now**: the strongest frequencies the microphone picks up. Both include a 0–22 kHz spectrum strip with the Audible and Silent bands shaded.
 - Near-ultrasonic room scenarios in the simulator (*ultra desk*, *ultra hand* with hand wobble, *chatter*, *crowd*) and six tests for the Silent band.
 - Public-release repository files: `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (private vulnerability reporting), `CITATION.cff`, GitHub issue forms (bug report, device test report, feature request) and a pull request template.
+- A documentation website built by GitHub Pages from the existing Markdown (`_config.yml`), with a sitemap and structured data describing the project, and an `llms.txt` summary for AI assistants.
+- A "Quick answers" section near the top of the README.
 
 ### Changed
+
+- The repository is renamed `adaptive-physical-communication-system` (hyphens instead of underscores). GitHub redirects the old URL.
 
 - Text and link envelopes carry no file name or MIME type: 7 bytes of overhead instead of 28. "sos" is now 10 B and a 17-character text 24 B, so short texts fit one Sound frame. Older receivers still decode them.
 - The Android microphone source is now voice recognition, which must have noise suppression and AGC off and a flat response.
@@ -186,4 +190,4 @@ Too fragile under real white balance and auto-exposure, and about 160× slower t
 
 See also the [Design Decisions](../architecture/DESIGN_DECISIONS.md) and the [Legacy Modems](../channels/LEGACY_MODEMS.md) evolution timeline.
 
-[Unreleased]: https://github.com/harsharaj-s/adaptive_physical_communication_system/commits/main
+[Unreleased]: https://github.com/harsharaj-s/adaptive-physical-communication-system/commits/main

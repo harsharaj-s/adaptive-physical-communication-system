@@ -291,7 +291,9 @@ Tap the big button at the bottom:
 The whole screen turns white and shows a large black-and-white QR code that changes about 12 times per second. Your screen brightness goes to maximum automatically and returns to normal afterwards.
 
 <p align="center"><img src="../images/send-light-streaming.png" alt="Light sending screen: a white screen with a large black-and-white QR code, the line Streaming, tap Stop when the receiver shows DONE, the details Auto, 160 B per frame, 3.3 KB, K=21, frame 38, and a Stop button at the bottom" width="260"></p>
-<p align="center"><em>Figure 6. Sending over Light. The QR code changes about 12 times per second. The 2.0 KB photo is 3.3 KB on air because the app re-encodes photos before sending (see <a href="../project/KNOWN_ISSUES.md#41-photos-are-re-compressed-and-grow-medium">Known Issues §4.1</a>).</em></p>
+<p align="center"><em>Figure 6. Sending over Light. The QR code changes about 12 times per second.</em></p>
+
+The photo in Figure 6 is 2.0 KB but 3.3 KB on air, because the app re-encodes photos before sending (see [Known Issues §4.1](../project/KNOWN_ISSUES.md#41-photos-are-re-compressed-and-grow-medium)).
 
 - At the top it says **Streaming… tap Stop when the receiver shows DONE**.
 - Under that is a small grey line such as `Auto · 330 B/frame · 80 KB · K=243 · frame 57`. It shows the density, the bytes per picture, the file size, the number of pieces the file was cut into (**K**) and which picture is being shown now. You can ignore it.

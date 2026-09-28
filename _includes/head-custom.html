@@ -1,0 +1,34 @@
+<link rel="icon" type="image/png" href="{{ '/assets/branding/app_mark.png' | relative_url }}">
+{% if page.url == "/" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "Adaptive Physical Communication System",
+  "alternateName": "APCS",
+  "description": "{{ site.description | strip_newlines | strip }}",
+  "url": "{{ '/' | absolute_url }}",
+  "codeRepository": "https://github.com/harsharaj-s/adaptive-physical-communication-system",
+  "programmingLanguage": "Dart",
+  "runtimePlatform": "Flutter",
+  "license": "https://opensource.org/licenses/MIT",
+  "dateModified": "{{ site.time | date_to_xmlschema }}",
+  "keywords": "offline file transfer, phone to phone, animated QR code, data over sound, acoustic modem, near-ultrasonic, fountain code, LT code, Reed-Solomon, FSK, Flutter",
+  "author": {
+    "@type": "Person",
+    "name": "Harsharaj S",
+    "url": "https://github.com/harsharaj-s",
+    "sameAs": [
+      "https://github.com/harsharaj-s",
+      "https://www.linkedin.com/in/harsharajs"
+    ]
+  },
+  "targetProduct": {
+    "@type": "SoftwareApplication",
+    "name": "Adaptive Physical Communication",
+    "operatingSystem": "Android, iOS, Web",
+    "applicationCategory": "UtilitiesApplication"
+  }
+}
+</script>
+{% endif %}

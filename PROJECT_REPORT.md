@@ -4,7 +4,7 @@
 **Project Name:** Adaptive Physical Communication System (APCS)  
 **Author:** Harsharaj S  
 **Last updated:** 28 September 2026  
-**Repository:** [github.com/harsharaj-s/adaptive_physical_communication_system](https://github.com/harsharaj-s/adaptive_physical_communication_system)  
+**Repository:** [github.com/harsharaj-s/adaptive-physical-communication-system](https://github.com/harsharaj-s/adaptive-physical-communication-system)  
 **Platform:** Flutter (Android, iOS, Web/Chrome)  
 **Language:** Dart 3.11+  
 **Communication Policy:** Physical channels only — no Internet, Wi-Fi, Bluetooth, NFC, or cloud for the data path

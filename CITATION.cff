@@ -13,7 +13,8 @@ authors:
   - family-names: "S"
     given-names: "Harsharaj"
     website: "https://www.linkedin.com/in/harsharajs"
-repository-code: "https://github.com/harsharaj-s/adaptive_physical_communication_system"
+repository-code: "https://github.com/harsharaj-s/adaptive-physical-communication-system"
+url: "https://harsharaj-s.github.io/adaptive-physical-communication-system/"
 license: MIT
 version: "1.0.0"
 keywords:

@@ -6,9 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug. Before you start, please check [Troubleshooting](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/operations/TROUBLESHOOTING.md) and [Known Issues](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/project/KNOWN_ISSUES.md).
+        Thanks for taking the time to report a bug. Before you start, please check [Troubleshooting](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/operations/TROUBLESHOOTING.md) and [Known Issues](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/project/KNOWN_ISSUES.md).
 
-        **Security problems don't belong here.** Follow the [security policy](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/SECURITY.md) instead.
+        **Security problems don't belong here.** Follow the [security policy](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/SECURITY.md) instead.
   - type: dropdown
     id: channel
     attributes:

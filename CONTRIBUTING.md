@@ -21,8 +21,8 @@ By taking part, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 You need Flutter 3.41 or later (Dart 3.11 or later). Full instructions for Windows, macOS and Linux are in [Installation](docs/getting-started/INSTALLATION.md).
 
 ```bash
-git clone https://github.com/harsharaj-s/adaptive_physical_communication_system.git
-cd adaptive_physical_communication_system
+git clone https://github.com/harsharaj-s/adaptive-physical-communication-system.git
+cd adaptive-physical-communication-system
 flutter pub get
 flutter test
 ```

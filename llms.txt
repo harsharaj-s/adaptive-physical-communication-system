@@ -1,0 +1,34 @@
+# Adaptive Physical Communication System (APCS)
+
+> APCS is an open-source (MIT) Flutter app for offline, phone-to-phone file transfer using light and sound. Light streams animated, fountain-coded QR codes from the sender's screen to the receiver's camera (estimated 1.3–2.5 KB/s). Sound is a 16-ary multi-tone FSK data-over-sound modem with Reed-Solomon error correction and LT fountain coding, including an inaudible 18.3–19.9 kHz band (nominal 3.4–36 B/s). No Internet, Wi-Fi, Bluetooth, NFC or mobile data is used in the data path. A third channel, vibration, is experimental and unreliable on real phones. The app runs on Android, iOS and Chrome (web). The adaptive channel-selection engine runs in the Simulation Lab and developer tools; in the normal Send/Receive screens the user picks the channel.
+
+Performance figures are nominal (calculated) or estimated (from headless camera and room simulators), not measured across many phones. None of the channels is encrypted.
+
+## Start here
+
+- [README (complete technical manual)](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/README.md): what every part does, with exact numbers and derivations
+- [Documentation index](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/README.md): the documentation set by topic and by reader need
+- [User Guide](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/getting-started/USER_GUIDE.md): step-by-step use of the app
+- [FAQ](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/getting-started/FAQ.md): common questions and short answers
+
+## Channels and algorithms
+
+- [Light Channel](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/channels/LIGHT_CHANNEL.md): animated fountain QR, frame format, camera pipeline
+- [Sound Channel](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/channels/SOUND_CHANNEL.md): multi-tone FSK profiles, sync, Reed-Solomon, Silent band
+- [Vibration Channel](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/channels/VIBRATION_CHANNEL.md): pulse-width keying design (experimental)
+- [Fountain Code](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/algorithms/FOUNTAIN_CODE.md): LT code, degree distribution, exact decoding
+- [Adaptive Engine](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/algorithms/ADAPTIVE_ENGINE.md): channel scoring and hysteresis
+
+## Architecture and development
+
+- [Architecture](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/architecture/ARCHITECTURE.md): layers, send and receive sequences
+- [Data Formats](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/architecture/DATA_FORMATS.md): byte-level envelope, frame and packet layouts
+- [API Reference](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/development/API_REFERENCE.md): public classes and functions
+- [Testing](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/development/TESTING.md): test suite and device test checklist
+
+## Optional
+
+- [Performance](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/operations/PERFORMANCE.md): how each speed figure is derived
+- [Known Issues](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/project/KNOWN_ISSUES.md): current limitations and bugs
+- [Changelog](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/docs/project/CHANGELOG.md): release history
+- [Citation](https://raw.githubusercontent.com/harsharaj-s/adaptive-physical-communication-system/main/CITATION.cff): how to cite APCS

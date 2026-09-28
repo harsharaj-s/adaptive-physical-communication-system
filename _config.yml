@@ -1,0 +1,57 @@
+# GitHub Pages site for the documentation.
+# Built by GitHub Pages (Jekyll) from the repository root; the Flutter app itself isn't part of the site.
+
+title: Adaptive Physical Communication System (APCS)
+description: >-
+  Open-source Flutter app for offline phone-to-phone file transfer using light
+  (animated QR codes) and sound (a data-over-sound modem), with no Internet,
+  Wi-Fi or Bluetooth in the data path.
+url: https://harsharaj-s.github.io
+baseurl: /adaptive-physical-communication-system
+lang: en
+theme: jekyll-theme-primer
+logo: /assets/branding/app_icon.png
+
+author:
+  name: Harsharaj S
+  url: https://github.com/harsharaj-s
+
+social:
+  name: Harsharaj S
+  links:
+    - https://github.com/harsharaj-s
+    - https://www.linkedin.com/in/harsharajs
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-readme-index
+  - jekyll-titles-from-headings
+  - jekyll-default-layout
+
+relative_links:
+  enabled: true
+  collections: false
+
+titles_from_headings:
+  enabled: true
+  strip_title: false
+
+# Lets Markdown links inside centred <div> blocks work on the site as they do on GitHub.
+kramdown:
+  parse_block_html: true
+
+exclude:
+  - android
+  - ios
+  - lib
+  - test
+  - tool
+  - web
+  - build
+  - assets/samples
+  - pubspec.yaml
+  - pubspec.lock
+  - analysis_options.yaml

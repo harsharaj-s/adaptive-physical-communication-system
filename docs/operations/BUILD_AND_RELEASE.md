@@ -190,6 +190,7 @@ Protocol compatibility is separate from the app version: two phones must share t
 | Asset | Generator | Re-run when |
 |---|---|---|
 | App icons (Android, iOS, web), splash logos, in-app logo | `python tool/make_app_icon.py` | Changing the logo or brand colours |
+| GitHub social preview card (`docs/images/social-preview.png`, 1280 × 640) | `python tool/make_social_preview.py` | Changing the logo, colours or tagline; then re-upload it in **Settings → General → Social preview** |
 | Demo photos and videos | `python tool/make_sample_media.py [photo_dir]` | Changing samples |
 | Explainer videos only | `python tool/make_explainer_videos.py [stem …]` | Editing a topic |
 
@@ -221,6 +222,17 @@ Do these once, when the repository first becomes public:
 - [ ] **About** (repository sidebar): add a one-line description, and topics such as `flutter`, `qr-code`, `acoustic-modem`, `fountain-code`, `reed-solomon`, `offline-communication`.
 - [ ] Check that **Insights → Community Standards** shows every item as complete (description, README, code of conduct, contributing, license, security policy, issue templates and pull request template).
 - [ ] Search the history for secrets before the first public push: `git log -p | Select-String -Pattern "storePassword|keyPassword|BEGIN PRIVATE KEY"` should find nothing.
+
+### Search visibility
+
+Search engines, including their AI answers, rank a repository mainly on its name, description, topics, README and outside links. These steps keep those signals strong:
+
+- [ ] **Settings → Pages**: build from the `main` branch, folder `/ (root)`. GitHub Pages turns the Markdown into the [documentation website](https://harsharaj-s.github.io/adaptive-physical-communication-system/) using `_config.yml`, with a sitemap and structured data. Set the site as the repository's **Website** in **About**.
+- [ ] **Settings → General → Social preview**: upload `docs/images/social-preview.png` (1280 × 640 px). This is the card shown when the repository link is shared on LinkedIn, X, Slack or WhatsApp. GitHub has no API for it, so it must be uploaded by hand.
+- [ ] Keep the README's first sentence a plain statement of what APCS is, and update the **Quick answers** when behaviour changes.
+- [ ] Optional: verify the website in [Google Search Console](https://search.google.com/search-console) and submit `sitemap.xml`.
+- [ ] Publish tagged releases with notes. Each release is another page that search engines index, and it shows the project is maintained.
+- [ ] Share the project where people look for it (a write-up on LinkedIn, dev.to or a relevant forum). Real outside links and mentions matter more than any file in the repository.
 
 ---
 

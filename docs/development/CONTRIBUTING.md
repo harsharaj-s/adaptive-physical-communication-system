@@ -194,6 +194,6 @@ Decide what the reader needs, then put the content in the matching kind of docum
 
 - **Commits:** a short imperative subject ("Add Rugged sound profile"), with an optional body explaining *why*.
 - **One topic per pull request**; keep refactors separate from behaviour changes.
-- **The PR description** says what changed, why, how it was tested (tests + devices), and any compatibility impact. The [pull request template](../../.github/PULL_REQUEST_TEMPLATE.md) prompts for each of these.
+- **The PR description** says what changed, why, how it was tested (tests + devices), and any compatibility impact. The [pull request template](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/.github/PULL_REQUEST_TEMPLATE.md) prompts for each of these.
 - **Issues** use the forms in `.github/ISSUE_TEMPLATE/`: bug report, device test report and feature request. Security problems go through the [security policy](../../SECURITY.md), never a public issue.
 - Never commit secrets: `android/key.properties`, keystores, `.env` files.

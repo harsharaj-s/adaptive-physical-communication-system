@@ -115,7 +115,7 @@ From `pubspec.yaml`:
 
 | Tool | Used by |
 |---|---|
-| Python 3 + Pillow | `tool/make_app_icon.py`, `tool/make_sample_media.py`, `tool/make_explainer_videos.py` |
+| Python 3 + Pillow | `tool/make_app_icon.py`, `tool/make_social_preview.py`, `tool/make_sample_media.py`, `tool/make_explainer_videos.py` |
 | `imageio-ffmpeg` (bundled ffmpeg: x264, libvpx-vp9, AAC, Opus) | Size-targeted two-pass video encodes |
 | Windows System.Speech (Microsoft Zira voice) | Offline narration for the explainer videos |
 

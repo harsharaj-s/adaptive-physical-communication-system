@@ -65,8 +65,8 @@ flutter doctor --android-licenses
 ## 3. Get the project
 
 ```powershell
-git clone https://github.com/harsharaj-s/adaptive_physical_communication_system.git
-cd adaptive_physical_communication_system
+git clone https://github.com/harsharaj-s/adaptive-physical-communication-system.git
+cd adaptive-physical-communication-system
 flutter pub get
 ```
 

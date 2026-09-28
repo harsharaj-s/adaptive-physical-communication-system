@@ -10,16 +10,13 @@
   <img src="https://img.shields.io/badge/radio%20in%20data%20path-none-success" alt="No radio in the data path">
 </p>
 
-<p align="center">
-  <a href="docs/README.md"><b>Documentation</b></a> ·
-  <a href="docs/getting-started/USER_GUIDE.md">User guide</a> ·
-  <a href="docs/getting-started/INSTALLATION.md">Installation</a> ·
-  <a href="docs/getting-started/FAQ.md">FAQ</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a> ·
-  <a href="docs/project/CHANGELOG.md">Changelog</a>
-</p>
+<div align="center">
 
-Send text, links, photos and short videos **from one phone to another using only light or sound**, with no Internet, Wi-Fi, Bluetooth, NFC, mobile data or cloud anywhere in the data path. A third channel, **vibration**, is experimental and doesn't work reliably yet.
+**[Documentation](docs/README.md)** · [User guide](docs/getting-started/USER_GUIDE.md) · [Installation](docs/getting-started/INSTALLATION.md) · [FAQ](docs/getting-started/FAQ.md) · [Contributing](CONTRIBUTING.md) · [Changelog](docs/project/CHANGELOG.md)
+
+</div>
+
+**APCS is an open-source Flutter app for offline, phone-to-phone file transfer using light and sound.** It sends text, links, photos and short videos **from one phone to another** through an animated QR-code stream (screen to camera) or a data-over-sound modem (speaker to microphone), with no Internet, Wi-Fi, Bluetooth, NFC, mobile data or cloud anywhere in the data path. A third channel, **vibration**, is experimental and doesn't work reliably yet.
 
 - **Light**: the sender's screen plays an animated stream of QR codes; the receiver's camera reads them. One screen can feed any number of cameras at once.
 - **Sound**: the sender's speaker plays multi-tone chords; the receiver's microphone decodes them. Works across a table, and one-to-many as well. A **Silent** band sends the same frames at 18–20 kHz, which most adults can't hear.
@@ -98,6 +95,31 @@ Core ideas in one line each:
 - **Soft-decision acoustic decoding**: the receiver knows *which* bytes it is unsure of, and tells Reed-Solomon to treat them as erasures, which doubles the number of bytes it can repair.
 - **Exact decoding**: both channels finish as soon as the received equations have full rank, on average 0–2.2 symbols more than the theoretical minimum.
 
+### Quick answers
+
+**What is APCS?**
+APCS (Adaptive Physical Communication System) is a free, MIT-licensed Flutter app that transfers files between two nearby phones using only light and sound. The sender shows animated QR codes or plays tones, and the receiver reads them with its camera or microphone.
+
+**Can I send files between phones without Internet, Wi-Fi or Bluetooth?**
+Yes. APCS sends data through the screen and camera (Light) or the speaker and microphone (Sound). No radio is used in the data path, and the Android release build doesn't request the Internet permission.
+
+**How fast is APCS?**
+Light is estimated at about 1.3–2.5 KB/s, based on the camera simulator. That's enough for photos and short videos. Sound runs at a nominal 11–36 bytes per second (3.4–5.0 B/s on the inaudible Silent band), so it suits short text and links. See [Performance](docs/operations/PERFORMANCE.md).
+
+**Can one phone send to several phones at once?**
+Yes. Light and Sound are one-to-many broadcasts: any number of receivers can read the same QR stream or listen to the same tones, and each finishes on its own.
+
+**How does APCS cope with missed frames and noise?**
+APCS uses a rateless LT fountain code, so a receiver needs *any* K good frames, not particular ones. Sound frames also carry Reed-Solomon error correction with erasure decoding, and every frame has a CRC check.
+
+**Is APCS encrypted?**
+No. Anyone nearby can see the QR codes or hear the tones, so don't send secrets. See the [security policy](SECURITY.md).
+
+**Which platforms does APCS support?**
+Android and iOS support Light and Sound, plus experimental Vibration. Chrome on a laptop supports Light (via the webcam) and Sound.
+
+More questions are answered in the [FAQ](docs/getting-started/FAQ.md).
+
 ---
 
 ## 2. Features
@@ -153,8 +175,8 @@ Core ideas in one line each:
 
 ### Run
 ```bash
-git clone https://github.com/harsharaj-s/adaptive_physical_communication_system.git
-cd adaptive_physical_communication_system
+git clone https://github.com/harsharaj-s/adaptive-physical-communication-system.git
+cd adaptive-physical-communication-system
 flutter pub get
 flutter test                 # full test suite (101 tests)
 flutter run                  # on a connected Android/iOS phone (all channels)
@@ -1310,7 +1332,7 @@ lib/
     ├── models/                       ComposePayload, PhysicalChannelMode
     └── theme/                        Responsive layout helpers
 assets/samples/                       Demo photos and narrated explainer videos
-tool/                                 make_sample_media.py, make_explainer_videos.py, debug helpers
+tool/                                 Media, icon and social-preview generators; debug helpers
 test/                                 Unit, integration and simulation tests (+ camera and room models)
 android/ ios/ web/                    Platform projects (Android brightness channel in MainActivity.kt)
 docs/                                 Full documentation set (index: docs/README.md)
@@ -1319,6 +1341,8 @@ PROJECT_REPORT.md                     Academic-style project report
 CONTRIBUTING.md, CODE_OF_CONDUCT.md   How to contribute, and community rules
 SECURITY.md                           How to report a vulnerability privately
 CITATION.cff, LICENSE                 Citation metadata; MIT License
+llms.txt                              Project summary and docs map for AI assistants
+_config.yml, _includes/               Documentation website (GitHub Pages)
 ```
 
 ---

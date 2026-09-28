@@ -212,4 +212,6 @@ Most of these values are exact, because they're set in the code: frame sizes, fr
 | [`SECURITY.md`](../SECURITY.md) | Supported versions and private vulnerability reporting |
 | [`CITATION.cff`](../CITATION.cff) | Citation metadata for academic use |
 | [`LICENSE`](../LICENSE) | MIT License |
-| [`.github/`](../.github/) | Issue forms and the pull request template |
+| [`llms.txt`](../llms.txt) | Short project summary and documentation map for AI assistants ([llmstxt.org](https://llmstxt.org/) format) |
+| [`_config.yml`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/_config.yml) | Settings for the [documentation website](https://harsharaj-s.github.io/adaptive-physical-communication-system/) built by GitHub Pages |
+| [`.github/`](https://github.com/harsharaj-s/adaptive-physical-communication-system/tree/main/.github) | Issue forms and the pull request template |

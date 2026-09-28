@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please check the [Roadmap](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/project/ROADMAP.md) first; your idea may already be planned.
+        Please check the [Roadmap](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/project/ROADMAP.md) first; your idea may already be planned.
 
         The app sends data over light, sound and vibration only. Features that need Wi-Fi, Bluetooth, NFC, mobile data or a server in the data path are out of scope.
   - type: textarea

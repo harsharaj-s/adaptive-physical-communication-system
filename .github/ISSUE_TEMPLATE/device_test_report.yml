@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Results from real hardware are the most useful feedback this project gets, because simulators can't model every camera, speaker and microphone. The [device test checklist](https://github.com/harsharaj-s/adaptive_physical_communication_system/blob/main/docs/development/TESTING.md#6-device-test-checklist) describes the tests to run.
+        Results from real hardware are the most useful feedback this project gets, because simulators can't model every camera, speaker and microphone. The [device test checklist](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/TESTING.md#6-device-test-checklist) describes the tests to run.
   - type: dropdown
     id: channel
     attributes:
