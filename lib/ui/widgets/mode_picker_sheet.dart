@@ -10,11 +10,13 @@ Future<PhysicalChannelMode?> showPhysicalModePicker(
 }) {
   return showModalBottomSheet<PhysicalChannelMode>(
     context: context,
+    isScrollControlled: true,
     showDragHandle: true,
     builder: (ctx) {
       final modes = availablePhysicalModes;
       return SafeArea(
-        child: Padding(
+        top: false,
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -22,17 +24,17 @@ Future<PhysicalChannelMode?> showPhysicalModePicker(
             children: [
               Text(
                 title,
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  ctx,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 6),
                 Text(
                   subtitle,
                   style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -42,10 +44,10 @@ Future<PhysicalChannelMode?> showPhysicalModePicker(
               ],
               const SizedBox(height: 16),
               Text(
-                'Tip: Light uses fountain QR — hold phones 15–25 cm apart.',
+                'Light is usually the easiest place to start: hold phones 15–25 cm apart.',
                 style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: Colors.white54,
-                    ),
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -71,17 +73,17 @@ class _ModeTile extends StatelessWidget {
     };
 
     return Material(
-      color: theme.colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(16),
+      color: theme.colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 26,
+                radius: 25,
                 backgroundColor: color.withValues(alpha: 0.15),
                 child: Icon(mode.icon, color: color, size: 28),
               ),
@@ -102,7 +104,7 @@ class _ModeTile extends StatelessWidget {
                       mode.subtitle,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: theme.colorScheme.onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),
@@ -120,7 +122,7 @@ class _ModeTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.35)),
+              Icon(Icons.arrow_forward_rounded, color: color),
             ],
           ),
         ),

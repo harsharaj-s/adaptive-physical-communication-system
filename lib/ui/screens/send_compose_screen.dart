@@ -79,23 +79,25 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
 
     var data = Uint8List.fromList(bytes);
     String? fileName = file.name;
-    String? mime = file.extension != null ? _mimeForExtension(file.extension!) : null;
+    String? mime = file.extension != null
+        ? _mimeForExtension(file.extension!)
+        : null;
 
     if (chatType == ChatMessageType.image) {
       try {
         data = await compressImageForTransfer(data);
       } on ImageTransferException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
         }
         return;
       }
       fileName = fileName.replaceAll(
-            RegExp(r'\.(png|webp|gif)$', caseSensitive: false),
-            '.jpg',
-          );
+        RegExp(r'\.(png|webp|gif)$', caseSensitive: false),
+        '.jpg',
+      );
       mime = 'image/jpeg';
     }
 
@@ -110,8 +112,14 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
             'Transfer may be slow or fail. Continue?',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Use anyway')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Use anyway'),
+            ),
           ],
         ),
       );
@@ -190,9 +198,7 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const BrandedTitle('Compose message'),
-      ),
+      appBar: AppBar(title: const BrandedTitle('Compose message')),
       body: PageContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -202,30 +208,51 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Text(
+                      'What would you like to share?',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Your content stays on nearby devices — no account or network needed.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
                     TextField(
                       controller: _textController,
-                      minLines: 4,
+                      minLines: 5,
                       maxLines: 8,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
-                        hintText: 'Type a message, paste a link…',
+                        hintText: 'Type a message or paste a link…',
+                        labelText: 'Message',
+                        alignLabelWithHint: true,
                         filled: true,
-                        fillColor: theme.colorScheme.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
+                        fillColor: theme.colorScheme.surfaceContainer,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 22),
                     Text(
-                      'Attach',
+                      'Add something else',
                       style: theme.textTheme.titleSmall?.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Choose one item to send instead of your message.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
@@ -233,12 +260,14 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
                         _AttachChip(
                           icon: Icons.photo_outlined,
                           label: 'Image',
-                          onTap: () => _pickFile(FileType.image, ChatMessageType.image),
+                          onTap: () =>
+                              _pickFile(FileType.image, ChatMessageType.image),
                         ),
                         _AttachChip(
                           icon: Icons.videocam_outlined,
                           label: 'Video',
-                          onTap: () => _pickFile(FileType.video, ChatMessageType.video),
+                          onTap: () =>
+                              _pickFile(FileType.video, ChatMessageType.video),
                         ),
                         _AttachChip(
                           icon: Icons.link,
@@ -263,14 +292,13 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _onSendTap,
-              icon: const Icon(Icons.send_rounded),
-              label: const Text('Continue to send'),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Choose how to send'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 17),
               ),
             ),
           ],
@@ -295,7 +323,10 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -329,10 +360,25 @@ class _AttachChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      onPressed: onTap,
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.secondary),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -375,18 +421,27 @@ class _SamplePickerSheetState extends State<_SamplePickerSheet> {
               Text(
                 'Built-in test files. Anything here works over Light; '
                 'keep Sound to about 2 KB.',
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white60,
+                ),
               ),
-              for (final type in [ChatMessageType.image, ChatMessageType.video]) ...[
+              for (final type in [
+                ChatMessageType.image,
+                ChatMessageType.video,
+              ]) ...[
                 const SizedBox(height: 16),
                 Text(
-                  type == ChatMessageType.image ? 'Photos' : 'Videos with sound',
+                  type == ChatMessageType.image
+                      ? 'Photos'
+                      : 'Videos with sound',
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: Colors.white70,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                for (final (sample, bytes) in items.where((e) => e.$1.type == type))
+                for (final (sample, bytes) in items.where(
+                  (e) => e.$1.type == type,
+                ))
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: SizedBox.square(
@@ -396,7 +451,8 @@ class _SamplePickerSheetState extends State<_SamplePickerSheet> {
                         child: sample.type == ChatMessageType.image
                             ? Image.asset(sample.assetPath, fit: BoxFit.cover)
                             : ColoredBox(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 child: const Icon(Icons.play_circle_outline),
                               ),
                       ),
@@ -427,15 +483,25 @@ class _AttachmentPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Icon(switch (payload.type) {
-              ChatMessageType.image => Icons.image,
-              ChatMessageType.video => Icons.videocam,
-              ChatMessageType.link => Icons.link,
-              _ => Icons.attach_file,
-            }),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(switch (payload.type) {
+                ChatMessageType.image => Icons.image,
+                ChatMessageType.video => Icons.videocam,
+                ChatMessageType.link => Icons.link,
+                _ => Icons.attach_file,
+              }, color: Theme.of(context).colorScheme.primary),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -444,7 +510,10 @@ class _AttachmentPreview extends StatelessWidget {
                   Text(payload.preview, overflow: TextOverflow.ellipsis),
                   Text(
                     '${(payload.byteSize / 1024).toStringAsFixed(1)} KB',
-                    style: const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

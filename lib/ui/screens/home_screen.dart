@@ -17,97 +17,166 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-
     return Scaffold(
       body: SafeArea(
         child: PageContainer(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.only(top: 8, bottom: 20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        tooltip: 'About',
-                        onPressed: () => showAppAboutDialog(context),
-                        icon: Icon(Icons.info_outline, color: Colors.white.withValues(alpha: 0.5)),
-                      ),
-                      IconButton(
-                        tooltip: 'Developer tools',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const DevMenuScreen()),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        icon: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.5)),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainer.withValues(
+                            alpha: 0.75,
+                          ),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          'OFFLINE READY',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'About Adaptive Comm',
+                            onPressed: () => showAppAboutDialog(context),
+                            icon: const Icon(Icons.info_outline),
+                          ),
+                          IconButton(
+                            tooltip: 'Developer tools',
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DevMenuScreen(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.more_horiz),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  SizedBox(height: size.height * 0.05),
-                  AppLogo(size: (size.width * 0.3).clamp(96.0, 148.0)),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 34),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.12,
+                        ),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.25,
+                          ),
+                        ),
+                      ),
+                      child: const AppLogo(size: 96),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
                   Text(
                     appName,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
                     appTagline,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w400,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Text(
                       physicalOnlyPolicySummary,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white38,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.8,
+                        ),
                         height: 1.45,
                       ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SizedBox(height: size.height * 0.06),
+                  const SizedBox(height: 38),
                   _ActionButton(
                     icon: Icons.send_rounded,
                     label: 'Send',
-                    subtitle: 'Compose and transmit a message',
+                    subtitle:
+                        'Write a message, add media, then choose a signal',
                     color: theme.colorScheme.primary,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SendComposeScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const SendComposeScreen(),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _ActionButton(
-                    icon: Icons.download_rounded,
+                    icon: Icons.sensors_rounded,
                     label: 'Receive',
-                    subtitle: 'Listen for incoming messages',
-                    color: Colors.tealAccent,
+                    subtitle: 'Listen or scan for an incoming signal',
+                    color: theme.colorScheme.secondary,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const ReceiveScreen()),
                     ),
                   ),
-                  SizedBox(height: size.height * 0.04),
-                  Text(
-                    platformCapabilityLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(color: Colors.white30),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 18,
+                          color: theme.colorScheme.secondary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            platformCapabilityLabel,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -136,19 +205,19 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(24),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 28,
-                backgroundColor: color.withValues(alpha: 0.2),
-                child: Icon(icon, color: color, size: 30),
+                radius: 27,
+                backgroundColor: color.withValues(alpha: 0.16),
+                child: Icon(icon, color: color, size: 27),
               ),
               const SizedBox(width: 18),
               Expanded(
@@ -158,8 +227,8 @@ class _ActionButton extends StatelessWidget {
                     Text(
                       label,
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -167,13 +236,14 @@ class _ActionButton extends StatelessWidget {
                       subtitle,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.35,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, size: 18, color: color.withValues(alpha: 0.7)),
+              Icon(Icons.arrow_forward_rounded, size: 20, color: color),
             ],
           ),
         ),
