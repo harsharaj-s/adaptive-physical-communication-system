@@ -156,7 +156,7 @@ docs/
 **The four ideas that make it work:**
 
 1. **Rateless fountain coding.** The sender never repeats itself and never waits for replies. The receiver completes as soon as it has caught about K good frames, *whichever* frames those are. See [Fountain Code](algorithms/FOUNTAIN_CODE.md).
-2. **Camera-realistic QR density.** QR codes are kept sparse (version 8–12) because a hand-held camera reads a dense code only about 13% of the time. See [Light Channel](channels/LIGHT_CHANNEL.md).
+2. **Camera-realistic QR density.** QR codes are kept sparse (version 8–12) because, in the camera simulator and in an early field test, a hand-held camera read a dense (version 20) code only about 11–13% of the time. See [Light Channel](channels/LIGHT_CHANNEL.md).
 3. **Soft-decision acoustic decoding.** The demodulator reports which bytes it is unsure of, and Reed-Solomon spends half the parity on those. See [Sound Channel](channels/SOUND_CHANNEL.md) and [Reed-Solomon](algorithms/REED_SOLOMON.md).
 4. **Honest simulation before hardware.** Headless models of a phone camera and of a room drove every design number. See [Testing](development/TESTING.md).
 
@@ -164,18 +164,20 @@ docs/
 
 ## Key numbers
 
+Most of these values are exact, because they're set in the code: frame sizes, frequencies, tone spacing and the scoring weights. The rates are **nominal**, calculated from each profile's timing; real transfers take longer when frames are lost, and results vary between phones. See [Performance](operations/PERFORMANCE.md) for how each figure is derived.
+
 | Quantity | Value | Where explained |
 |---|---|---|
 | Light frame overhead | 26 bytes (22 header + 4 CRC-32) | [Data Formats](architecture/DATA_FORMATS.md#3-apcf-v3-light-frame) |
 | Light bytes per QR (Auto) | 160 / 240 / 330 → QR v8 / v10 / v12 | [Light Channel](channels/LIGHT_CHANNEL.md#5-density-profiles-and-the-auto-rule) |
 | Light display rate | 12 frames/s (Safe: 8) | [Light Channel](channels/LIGHT_CHANNEL.md) |
-| Sound rates | 10.8 / 18.1 / 27.0 / 35.8 B/s audible; 3.4 / 5.0 B/s Silent (18–20 kHz) | [Sound Channel](channels/SOUND_CHANNEL.md#7-profiles) |
+| Sound rates (nominal) | 10.8 / 18.1 / 27.0 / 35.8 B/s audible; 3.4 / 5.0 B/s Silent (18–20 kHz) | [Sound Channel](channels/SOUND_CHANNEL.md#7-profiles) |
 | Sound tone spacing | 44 100 / 1024 = 43.066 Hz | [Signal Processing](algorithms/SIGNAL_PROCESSING.md) |
 | Sound time per bit | Standard 2.9 ms raw / 4.6 ms net; Silent 11.6 ms raw / 25 ms net (16-ary FSK, 4 bits per tone) | [FAQ](getting-started/FAQ.md#sound-channel) |
 | Reed-Solomon repair | up to 12 errors or 24 erasures per 99-byte frame | [Reed-Solomon](algorithms/REED_SOLOMON.md) |
-| Fountain overhead | mean 0–2.2 extra symbols | [Fountain Code](algorithms/FOUNTAIN_CODE.md#7-measured-overhead) |
+| Fountain overhead | mean 0–2.2 extra symbols (measured in tests) | [Fountain Code](algorithms/FOUNTAIN_CODE.md#7-measured-overhead) |
 | Adaptive score | 0.35T + 0.25R + 0.15L + 0.15C + 0.10S | [Adaptive Engine](algorithms/ADAPTIVE_ENGINE.md) |
-| Vibration | ≈0.5 B/s | [Vibration Channel](channels/VIBRATION_CHANNEL.md) |
+| Vibration (nominal) | ≈0.5 B/s | [Vibration Channel](channels/VIBRATION_CHANNEL.md) |
 
 ---
 

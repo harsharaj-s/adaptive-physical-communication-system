@@ -51,6 +51,7 @@ Silent sound band, faster short texts, the live frequency readout, and the publi
 - Every sound burst starts and ends with a 256-sample raised-cosine fade and a 40 ms tail, removing clicks.
 - The room simulator's clock-drift resampling is now cubic (Catmull-Rom) instead of linear. Linear interpolation attenuates a 19 kHz tone by about 6 dB. Some audible results moved slightly as a result.
 - The documentation index is organised by reader need (tutorials, how-to guides, reference and explanation), and the README links to the community files.
+- Performance figures in the README, the documentation index, Performance and the project report are labelled as nominal (calculated), estimated (from the simulators) or recommended. The report no longer calls Vibration "secure", and every mention of adaptive switching says it runs in the Simulation Lab and developer tools only.
 
 ### Fixed
 

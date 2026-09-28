@@ -23,7 +23,9 @@ Back to the [documentation index](../README.md).
 
 ## 1. Channel speeds
 
-| Channel | Nominal | Typical goodput | Range |
+The **Nominal** column is calculated from each profile's timing. **Estimated goodput** multiplies it by the decode rates measured in the camera and room simulators and by the fountain overhead. The ranges are recommendations. None of these columns comes from a study across many phones, so real devices can be faster or slower; see [Known Issues §6](../project/KNOWN_ISSUES.md#6-physical-limits-by-design).
+
+| Channel | Nominal | Estimated goodput | Recommended range |
 |---|---|---|---|
 | Light, Auto (v8–v12, 12 fps) | 1.9–4.0 KB/s | ≈1.3–2.5 KB/s | 15–40 cm |
 | Light, Safe (v8, 8 fps) | 1.28 KB/s | ≈0.9 KB/s | Weak cameras |

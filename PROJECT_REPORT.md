@@ -57,6 +57,8 @@ Traditional wireless protocols require shared spectrum, pairing, and network inf
 | 8 | Live feedback (QR progress, mic levels, live kHz readout on sender and receiver) | ✅ Done |
 | 9 | Inaudible near-ultrasonic sound mode (Silent band, 18.3–19.9 kHz) | ✅ Done |
 
+"Done" means implemented and covered by the automated tests, which run headless simulations of a phone camera and a room. Performance on real phones varies by model and hasn't been measured systematically (see §17 and §18). Adaptive switching runs only in the Simulation Lab and developer tools; in the Send/Receive screens the user picks the channel.
+
 ---
 
 ## 5. Literature Survey
@@ -614,12 +616,14 @@ Enforced at design level — no network transports in the data path:
 
 ## 17. Performance Characteristics
 
-| Channel | Typical Throughput | Range | Broadcast | Best Content |
+Rates marked *nominal* are calculated from each profile's timing; *estimated* rates combine the raw frame rate with decode rates measured in the camera simulator. Ranges are recommendations. Real phones differ, so treat these as planning figures, not guarantees.
+
+| Channel | Throughput | Recommended range | Broadcast | Best Content |
 |---------|-------------------|-------|-----------|--------------|
-| Light (fountain QR) | ≈1.3–2.5 KB/s in practice (Auto density, 12 fps) | Line of sight, 15–25 cm | ✅ Yes | Text, images, video, files |
-| Sound, Audible (MT-FSK fountain) | ~86–286 bps net (10.8–35.8 B/s) | Across a table; Rugged profile for noisy rooms | ✅ Yes | Text, small files |
-| Sound, Silent (18.3–19.9 kHz) | ~27–40 bps net (3.4–5.0 B/s) | Within about half a metre; inaudible to most adults | ✅ Yes | Short texts |
-| Vibrate | ≈4–5 bps raw (≈0.5 B/s; 80/180 ms pulses + 60 ms gaps) | Contact only | ❌ No | Very short text |
+| Light (fountain QR) | ≈1.3–2.5 KB/s estimated (Auto density, 12 fps) | Line of sight, 15–25 cm | ✅ Yes | Text, images, video, files |
+| Sound, Audible (MT-FSK fountain) | ~86–286 bps nominal net (10.8–35.8 B/s) | Across a table; Rugged profile for noisy rooms | ✅ Yes | Text, small files |
+| Sound, Silent (18.3–19.9 kHz) | ~27–40 bps nominal net (3.4–5.0 B/s) | Within about half a metre; inaudible to most adults | ✅ Yes | Short texts |
+| Vibrate | ≈4–5 bps nominal raw (≈0.5 B/s; 80/180 ms pulses + 60 ms gaps) | Contact only | ❌ No | Very short text |
 
 ---
 
@@ -648,7 +652,7 @@ Enforced at design level — no network transports in the data path:
 
 ## 20. Conclusion
 
-The Adaptive Physical Communication System demonstrates that **meaningful data exchange** — including text, links, and compressed images — is achievable using only a smartphone's built-in sensors and actuators, without any radio networking. Three complementary physical channels (light, sound, vibration) cover different use cases: broadcast groups via QR, proximity text via tones, and secure contact-only via vibration. The layered architecture (UI → controller → transport → codecs) with adaptive decision engine and reliable protocol provides a foundation for further research in offline proximity communication.
+The Adaptive Physical Communication System demonstrates that **meaningful data exchange** — including text, links, and compressed images — is achievable using only a smartphone's built-in sensors and actuators, without any radio networking. Three complementary physical channels (light, sound, vibration) cover different use cases: broadcast groups via QR, proximity text via tones, and contact-only communication via vibration. None of the channels is encrypted or authenticated (see §18). The layered architecture (UI → controller → transport → codecs) with adaptive decision engine and reliable protocol provides a foundation for further research in offline proximity communication.
 
 ---
 

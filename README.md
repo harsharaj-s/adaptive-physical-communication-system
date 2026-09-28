@@ -25,7 +25,7 @@ Send text, links, photos and short videos **from one phone to another using only
 - **Sound**: the sender's speaker plays multi-tone chords; the receiver's microphone decodes them. Works across a table, and one-to-many as well. A **Silent** band sends the same frames at 18–20 kHz, which most adults can't hear.
 - **Vibration**: the sender's vibration motor pulses; the receiver's accelerometer feels them. Contact only, one-to-one.
 
-It is a Flutter app (Dart) for **Android, iOS and Chrome (web)**. Behind the simple Send/Receive screens sit a rateless **fountain code**, a camera-tuned **QR pipeline**, a **multi-tone FSK modem with Reed-Solomon error correction**, a **reliable packet transport**, and an **adaptive channel-selection engine** with a full simulation lab.
+It is a Flutter app (Dart) for **Android, iOS and Chrome (web)**. Behind the simple Send/Receive screens sit a rateless **fountain code**, a camera-tuned **QR pipeline**, a **multi-tone FSK modem with Reed-Solomon error correction**, a **reliable packet transport**, and an **adaptive channel-selection engine** that runs in the Simulation Lab and developer tools. In the everyday Send/Receive screens you choose the channel yourself; the app doesn't switch channels automatically there.
 
 <p align="center">
   <img src="docs/images/home.png" alt="Home screen with Send and Receive buttons" width="200">
@@ -76,16 +76,24 @@ Also: [Contributing](#contributing) · [Security](#security) · [Citing this pro
 | Transmitter | Screen, full brightness | Speaker | Vibration motor |
 | Receiver | Camera, 1.5× zoom | Microphone, 44.1 kHz | Accelerometer |
 | Topology | One-to-many broadcast | One-to-many broadcast | One-to-one, phones touching |
-| Typical range | 15–25 cm | Across a table (≈0.3–2 m) | Contact |
-| Payload rate | ≈1.3–2.5 KB/s effective | 11 / 18 / 27 / 36 B/s (Rugged / Safe / Standard / Fast); inaudible 3.4 / 5.0 B/s (Silent Robust / Silent) | ≈0.5 B/s |
+| Recommended range | 15–25 cm | Across a table (≈0.3–2 m, estimated) | Contact |
+| Payload rate | ≈1.3–2.5 KB/s (estimated from the camera simulator) | Nominal: 11 / 18 / 27 / 36 B/s (Rugged / Safe / Standard / Fast); inaudible 3.4 / 5.0 B/s (Silent Robust / Silent) | ≈0.5 B/s (nominal) |
 | Max message | 8 MiB (practical: < 200 KB) | 8 KiB direct (practical: ≤ 2 KB) | Short text |
 | Error handling | Rateless LT fountain + CRC-32 per frame | Reed-Solomon per frame (errors + erasures) + CRC-16 + LT fountain | CRC-32 packets + ACK/retransmit |
 | Best for | Photos, video, files | Short text, tiny images | A few characters |
 
+> **About these numbers.** They come from the app's own formulas and from headless simulations of a phone camera and a room, not from a study across many phones.
+> - **Nominal** rates are calculated from each profile's timing, before any lost or repaired frames.
+> - **Estimated** rates combine the raw frame rate with decode rates measured in the simulators.
+> - **Ranges** are recommendations.
+> - Frequencies such as 18.3–19.9 kHz are design values set in the code, not measurements.
+>
+> Cameras, speakers and microphones differ a lot between phones, so your results may be different. See [Performance](docs/operations/PERFORMANCE.md) for how each number is derived, and [section 20](#20-known-limitations-and-honest-caveats) for what hasn't been verified on devices.
+
 Core ideas in one line each:
 
 - **Rateless fountain coding**: the sender never repeats itself. Every frame the receiver catches carries new information, so lost frames don't matter, only how many good frames arrive. There is no back-channel.
-- **Camera-realistic QR density**: codes are kept sparse (QR version 8–12) because a hand-held phone camera reads a dense code only about 13% of the time.
+- **Camera-realistic QR density**: codes are kept sparse (QR version 8–12) because, in the camera simulator and in an early field test, a hand-held phone camera read a dense (version 20) code only about 11–13% of the time.
 - **Soft-decision acoustic decoding**: the receiver knows *which* bytes it is unsure of, and tells Reed-Solomon to treat them as erasures, which doubles the number of bytes it can repair.
 - **Exact decoding**: both channels finish as soon as the received equations have full rank, on average 0–2.2 symbols more than the theoretical minimum.
 
@@ -1376,3 +1384,5 @@ APCS builds on open-source Flutter packages, notably [`qr`](https://pub.dev/pack
 ## License
 
 APCS is released under the [MIT License](LICENSE). Copyright © 2026 Harsharaj S.
+
+The MIT License covers this project's own code and documentation only. Third-party packages listed in `pubspec.yaml` remain under their own licenses; the app's **About** dialog lists them. The papers and standards in [References](#24-references) are cited for background and don't imply endorsement by their authors or publishers.

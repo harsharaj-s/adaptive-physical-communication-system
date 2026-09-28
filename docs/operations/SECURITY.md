@@ -123,7 +123,7 @@ This is on the [Roadmap](../project/ROADMAP.md).
 ## 8. Guidance for users
 
 - Don't send passwords, ID documents or anything private by Light or Sound in a public place.
-- For private content, prefer Vibration (contact only), or encrypt the file first (for example a password-protected archive).
+- For private content, encrypt the file first (for example a password-protected archive). Vibration is harder to overhear because it needs contact, but it isn't encrypted either.
 - If an unexpected message arrives, remember that anyone nearby can send one.
 - Received files are saved to your Gallery automatically; delete anything you didn't want.
 
