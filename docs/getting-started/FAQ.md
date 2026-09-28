@@ -166,4 +166,4 @@ No. There is no network code in the data path and no analytics. Received items s
 From headless simulations. A camera model renders QR codes with blur, perspective, glare and noise; a room model adds echoes, speaker roll-off, clock drift and noise. See [Testing](../development/TESTING.md) and [Design Decisions](../architecture/DESIGN_DECISIONS.md).
 
 **How do I add a new channel?**
-Implement `CommChannel` and register it in the channel manager. See [API Reference](../development/API_REFERENCE.md) and [Contributing](../development/CONTRIBUTING.md).
+Implement `CommChannel` and register it in the channel manager. See [API Reference](../development/API_REFERENCE.md) and [Contributing](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md).

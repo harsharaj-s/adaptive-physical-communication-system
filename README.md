@@ -3,7 +3,7 @@
 # Adaptive Physical Communication System (APCS)
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter" alt="Flutter 3.41">
   <img src="https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart" alt="Dart 3.11">
   <img src="https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-lightgrey" alt="Platforms: Android, iOS and web">
@@ -12,7 +12,7 @@
 
 <div align="center">
 
-**[Documentation](docs/README.md)** · [User guide](docs/getting-started/USER_GUIDE.md) · [Installation](docs/getting-started/INSTALLATION.md) · [FAQ](docs/getting-started/FAQ.md) · [Contributing](CONTRIBUTING.md) · [Changelog](docs/project/CHANGELOG.md)
+**[Documentation](docs/README.md)** · [User guide](docs/getting-started/USER_GUIDE.md) · [Installation](docs/getting-started/INSTALLATION.md) · [FAQ](docs/getting-started/FAQ.md) · [Contributing](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CONTRIBUTING.md) · [Changelog](docs/project/CHANGELOG.md)
 
 </div>
 
@@ -1391,7 +1391,7 @@ For the academic write-up (abstract, objectives, literature survey), see [`PROJE
 
 ## Contributing
 
-Bug reports, results from real phones, documentation fixes and code are all welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), which explains how to report issues and open pull requests, and then the [developer guide](docs/development/CONTRIBUTING.md) for code style and the rules that keep two phones compatible. Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Bug reports, results from real phones, documentation fixes and code are all welcome. Start with [CONTRIBUTING.md](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CONTRIBUTING.md), which explains how to report issues and open pull requests, and then the [developer guide](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md) for code style and the rules that keep two phones compatible. Everyone taking part is expected to follow the [Code of Conduct](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CODE_OF_CONDUCT.md).
 
 ## Security
 
@@ -1414,6 +1414,6 @@ APCS builds on open-source Flutter packages, notably [`qr`](https://pub.dev/pack
 
 ## License
 
-APCS is released under the [MIT License](LICENSE). Copyright © 2026 Harsharaj S.
+APCS is released under the [MIT License](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/LICENSE). Copyright © 2026 Harsharaj S.
 
 The MIT License covers this project's own code and documentation only. Third-party packages listed in `pubspec.yaml` remain under their own licenses; the app's **About** dialog lists them. The papers and standards in [References](#24-references) are cited for background and don't imply endorsement by their authors or publishers.

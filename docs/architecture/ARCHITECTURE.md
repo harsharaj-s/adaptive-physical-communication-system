@@ -299,7 +299,7 @@ More in the [UI Guide](../development/UI_GUIDE.md).
 | A new simulation scenario | Add to `scenarios.dart` | Appears in the Simulation Lab and in *Run All* |
 | A new modem for an existing channel | Add alongside the old one (e.g. `physical/<name>/`) and select it in the hardware channel | Follows the extend-not-overwrite rule |
 
-Step-by-step recipes are in [Contributing](../development/CONTRIBUTING.md).
+Step-by-step recipes are in [Contributing](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md).
 
 ---
 

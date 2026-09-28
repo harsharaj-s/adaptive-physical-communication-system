@@ -16,9 +16,9 @@ The root [`README.md`](../README.md) is a one-file technical manual. The documen
 | **Using the app** for the first time | [User Guide](getting-started/USER_GUIDE.md) → [FAQ](getting-started/FAQ.md) |
 | **Building it** from source | [Installation](getting-started/INSTALLATION.md) → [Build and Release](operations/BUILD_AND_RELEASE.md) |
 | **Explaining how it works** (viva, report, interview) | [Architecture](architecture/ARCHITECTURE.md) → [Fountain Code](algorithms/FOUNTAIN_CODE.md) → [Light Channel](channels/LIGHT_CHANNEL.md) → [Sound Channel](channels/SOUND_CHANNEL.md) → [Calculations](algorithms/CALCULATIONS.md) |
-| **Changing the code** | [Architecture](architecture/ARCHITECTURE.md) → [API Reference](development/API_REFERENCE.md) → [UI Guide](development/UI_GUIDE.md) → [Testing](development/TESTING.md) → [Contributing](development/CONTRIBUTING.md) |
+| **Changing the code** | [Architecture](architecture/ARCHITECTURE.md) → [API Reference](development/API_REFERENCE.md) → [UI Guide](development/UI_GUIDE.md) → [Testing](development/TESTING.md) → [Contributing](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md) |
 | **Checking limits and risks** | [Known Issues](project/KNOWN_ISSUES.md) → [Security](operations/SECURITY.md) → [Permissions and Privacy](operations/PERMISSIONS_AND_PRIVACY.md) |
-| **Contributing** to the project | [`CONTRIBUTING.md`](../CONTRIBUTING.md) → [Contributing (developer guide)](development/CONTRIBUTING.md) → [Code of Conduct](../CODE_OF_CONDUCT.md) |
+| **Contributing** to the project | [`CONTRIBUTING.md`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CONTRIBUTING.md) → [Contributing (developer guide)](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md) → [Code of Conduct](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CODE_OF_CONDUCT.md) |
 
 ---
 
@@ -40,7 +40,7 @@ The documents follow the [Diátaxis](https://diataxis.fr/) framework: each one i
 | [Showcase Guide](getting-started/SHOWCASE_GUIDE.md) | Run a live demo, with a checklist, script, talking points and a recovery plan |
 | [Troubleshooting](operations/TROUBLESHOOTING.md) | Find the cause of a symptom and fix it |
 | [Build and Release](operations/BUILD_AND_RELEASE.md) | Produce signed Android, iOS and web builds |
-| [Contributing (developer guide)](development/CONTRIBUTING.md) | Add a profile, a modem or a sample, and change a wire format safely |
+| [Contributing (developer guide)](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md) | Add a profile, a modem or a sample, and change a wire format safely |
 | [Media Pipeline](development/MEDIA_PIPELINE.md) | Regenerate demo samples and explainer videos |
 
 ### Reference: look up exact facts
@@ -187,8 +187,8 @@ Most of these values are exact, because they're set in the code: frame sizes, fr
 - **Hex dumps** are real output of the project's own codecs (generated on 27 Sep 2026; envelope and Sound dumps regenerated on 28 Sep 2026 for the compact envelopes and the Silent band), not hand-written.
 - **"K"** always means the number of source blocks in a fountain transfer.
 - **File paths** are relative to the project root, e.g. `lib/core/physical/fountain/lt_codec.dart`.
-- **Numbers** are copied from the code. If the code and a document ever disagree, the code wins. Please fix the document (see [Contributing](development/CONTRIBUTING.md)).
-- **Style.** British English in prose, "you" for the reader, **bold** for buttons and labels in the app, `code font` for files, classes and commands. The full style rules are in [Contributing §9](development/CONTRIBUTING.md#9-documentation).
+- **Numbers** are copied from the code. If the code and a document ever disagree, the code wins. Please fix the document (see [Contributing](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md)).
+- **Style.** British English in prose, "you" for the reader, **bold** for buttons and labels in the app, `code font` for files, classes and commands. The full style rules are in [Contributing §9](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/docs/development/CONTRIBUTING.md#9-documentation).
 
 ---
 
@@ -207,11 +207,11 @@ Most of these values are exact, because they're set in the code: frame sizes, fr
 |---|---|
 | [`README.md`](../README.md) | Single-file technical manual and project front page |
 | [`PROJECT_REPORT.md`](../PROJECT_REPORT.md) | Academic-style report (abstract, objectives, literature survey) |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | How to report bugs, share device results and open pull requests |
-| [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Community rules (Contributor Covenant 2.1) |
+| [`CONTRIBUTING.md`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CONTRIBUTING.md) | How to report bugs, share device results and open pull requests |
+| [`CODE_OF_CONDUCT.md`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CODE_OF_CONDUCT.md) | Community rules (Contributor Covenant 2.1) |
 | [`SECURITY.md`](../SECURITY.md) | Supported versions and private vulnerability reporting |
 | [`CITATION.cff`](../CITATION.cff) | Citation metadata for academic use |
-| [`LICENSE`](../LICENSE) | MIT License |
+| [`LICENSE`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/LICENSE) | MIT License |
 | [`llms.txt`](../llms.txt) | Short project summary and documentation map for AI assistants ([llmstxt.org](https://llmstxt.org/) format) |
 | [`_config.yml`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/_config.yml) | Settings for the [documentation website](https://harsharaj-s.github.io/adaptive-physical-communication-system/) built by GitHub Pages |
 | [`.github/`](https://github.com/harsharaj-s/adaptive-physical-communication-system/tree/main/.github) | Issue forms and the pull request template |

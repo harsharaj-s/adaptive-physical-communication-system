@@ -2,6 +2,7 @@
 # Built by GitHub Pages (Jekyll) from the repository root; the Flutter app itself isn't part of the site.
 
 title: Adaptive Physical Communication System (APCS)
+tagline: Offline file transfer using light and sound
 description: >-
   Open-source Flutter app for offline phone-to-phone file transfer using light
   (animated QR codes) and sound (a data-over-sound modem), with no Internet,

@@ -2,7 +2,7 @@
 
 How to make changes to the project safely: the workflow, the code conventions the existing code follows, how to add a feature without breaking two-phone compatibility, and how to keep these documents correct.
 
-This is the detailed developer guide. For how to report bugs, share device test results and open a pull request, see [`CONTRIBUTING.md`](../../CONTRIBUTING.md) in the repository root. Everyone taking part follows the [Code of Conduct](../../CODE_OF_CONDUCT.md).
+This is the detailed developer guide. For how to report bugs, share device test results and open a pull request, see [`CONTRIBUTING.md`](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CONTRIBUTING.md) in the repository root. Everyone taking part follows the [Code of Conduct](https://github.com/harsharaj-s/adaptive-physical-communication-system/blob/main/CODE_OF_CONDUCT.md).
 
 Back to the [documentation index](../README.md).
 
