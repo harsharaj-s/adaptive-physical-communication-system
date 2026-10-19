@@ -62,11 +62,25 @@ class ChatBubble extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Text(
-                            'Received',
+                            message.senderName?.isNotEmpty == true
+                                ? message.senderName!
+                                : 'Received',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: Colors.lightGreenAccent.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        )
+                      else if (message.senderName?.isNotEmpty == true)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            'You · ${message.senderName}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: fg.withValues(alpha: 0.75),
                             ),
                           ),
                         ),

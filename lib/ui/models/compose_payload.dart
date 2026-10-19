@@ -12,6 +12,7 @@ class ComposePayload {
     this.text,
     this.fileName,
     this.mimeType,
+    this.senderName,
   });
 
   final ChatMessageType type;
@@ -19,6 +20,7 @@ class ComposePayload {
   final String? text;
   final String? fileName;
   final String? mimeType;
+  final String? senderName;
 
   int get byteSize => data.length;
 
@@ -27,10 +29,16 @@ class ComposePayload {
   /// bound.
   int get envelopeBytes => switch (type) {
         ChatMessageType.text || ChatMessageType.link when text != null =>
-          ChatPayloadCodec.overheadBytes() + utf8.encode(text!).length,
+          ChatPayloadCodec.overheadBytes(
+                type: type,
+                senderName: senderName,
+              ) +
+              utf8.encode(text!).length,
         _ => ChatPayloadCodec.overheadBytes(
+              type: type,
               fileName: fileName,
               mimeType: mimeType,
+              senderName: senderName,
             ) +
             data.length,
       };
@@ -45,16 +53,28 @@ class ComposePayload {
 
   Uint8List toEnvelope() {
     return switch (type) {
-      ChatMessageType.text when text != null => ChatPayloadCodec.encodeText(text!),
-      ChatMessageType.link when text != null => ChatPayloadCodec.encodeLink(text!),
+      ChatMessageType.text when text != null =>
+        ChatPayloadCodec.encodeText(text!, senderName: senderName),
+      ChatMessageType.link when text != null =>
+        ChatPayloadCodec.encodeLink(text!, senderName: senderName),
       _ => ChatPayloadCodec.encode(
           type: type,
           data: data,
           fileName: fileName,
           mimeType: mimeType,
+          senderName: senderName,
         ),
     };
   }
+
+  ComposePayload withSenderName(String? name) => ComposePayload(
+        type: type,
+        data: data,
+        text: text,
+        fileName: fileName,
+        mimeType: mimeType,
+        senderName: name,
+      );
 
   bool get isEmpty {
     if (type == ChatMessageType.text || type == ChatMessageType.link) {

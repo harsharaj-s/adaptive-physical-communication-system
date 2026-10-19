@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
 import 'package:adaptive_physical_communication/core/media/image_compress.dart';
 import 'package:adaptive_physical_communication/core/media/sample_media.dart';
+import 'package:adaptive_physical_communication/main.dart';
 import 'package:adaptive_physical_communication/ui/models/compose_payload.dart';
 import 'package:adaptive_physical_communication/ui/screens/send_transmit_screen.dart';
 import 'package:adaptive_physical_communication/ui/theme/app_layout.dart';
@@ -32,6 +33,7 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
   }
 
   ComposePayload? _buildPayload() {
+    final senderName = AppProvider.of(context).displayName;
     final text = _textController.text.trim();
     if (_attachment != null) {
       if (text.isNotEmpty &&
@@ -41,9 +43,12 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
           type: ChatMessageType.text,
           data: Uint8List.fromList(text.codeUnits),
           text: text,
+          senderName: senderName,
         );
       }
-      return _attachment;
+      return _attachment!.senderName == senderName
+          ? _attachment
+          : _attachment!.withSenderName(senderName);
     }
     if (text.isEmpty) return null;
     if (_looksLikeUrl(text)) {
@@ -51,12 +56,14 @@ class _SendComposeScreenState extends State<SendComposeScreen> {
         type: ChatMessageType.link,
         data: Uint8List.fromList(text.codeUnits),
         text: text.startsWith('http') ? text : 'https://$text',
+        senderName: senderName,
       );
     }
     return ComposePayload(
       type: ChatMessageType.text,
       data: Uint8List.fromList(text.codeUnits),
       text: text,
+      senderName: senderName,
     );
   }
 

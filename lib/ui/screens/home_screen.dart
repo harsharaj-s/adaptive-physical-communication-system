@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:adaptive_physical_communication/core/platform/platform_capabilities.dart';
+import 'package:adaptive_physical_communication/main.dart';
 import 'package:adaptive_physical_communication/ui/screens/dev_menu_screen.dart';
+import 'package:adaptive_physical_communication/ui/screens/display_name_screen.dart';
 import 'package:adaptive_physical_communication/ui/screens/receive_screen.dart';
 import 'package:adaptive_physical_communication/ui/screens/send_compose_screen.dart';
 import 'package:adaptive_physical_communication/ui/theme/app_layout.dart';
@@ -17,6 +19,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final displayName = AppProvider.of(context).displayName;
     return Scaffold(
       body: SafeArea(
         child: PageContainer(
@@ -29,23 +32,37 @@ class HomeScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      Material(
+                        color: theme.colorScheme.surfaceContainer.withValues(
+                          alpha: 0.75,
                         ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainer.withValues(
-                            alpha: 0.75,
-                          ),
+                        borderRadius: BorderRadius.circular(99),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          'OFFLINE READY',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.secondary,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.1,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DisplayNameScreen(
+                                initialName: displayName,
+                                allowSkip: true,
+                              ),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Text(
+                              displayName == null || displayName.isEmpty
+                                  ? 'OFFLINE READY'
+                                  : displayName.toUpperCase(),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.secondary,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
                           ),
                         ),
                       ),

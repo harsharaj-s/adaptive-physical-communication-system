@@ -16,6 +16,7 @@ class ChatMessage {
     this.fileName,
     this.mimeType,
     this.byteSize,
+    this.senderName,
   });
 
   final String id;
@@ -28,6 +29,8 @@ class ChatMessage {
   final String? fileName;
   final String? mimeType;
   final int? byteSize;
+  /// Short display name of who sent this message (from the APCM name field).
+  final String? senderName;
 
   ChatMessage copyWith({
     String? id,
@@ -35,6 +38,7 @@ class ChatMessage {
     bool? isOutgoing,
     String? text,
     Uint8List? data,
+    String? senderName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -47,6 +51,7 @@ class ChatMessage {
       fileName: fileName,
       mimeType: mimeType,
       byteSize: byteSize,
+      senderName: senderName ?? this.senderName,
     );
   }
 

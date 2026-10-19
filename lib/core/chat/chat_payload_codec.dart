@@ -2,18 +2,30 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
+import 'package:adaptive_physical_communication/core/user/user_profile_store.dart';
 
 /// Envelope: magic "APCM" + type byte + utf8 name + raw bytes.
+///
+/// The name field carries an optional short sender display name:
+/// - text / link: name = sender (file name unused)
+/// - image / video / file: name = `sender\x1ffileName` when a sender is set,
+///   otherwise just the file name (legacy)
 class ChatPayloadCodec {
   static const _magic = [0x41, 0x50, 0x43, 0x4D]; // APCM
+
+  /// Separates sender from file name inside the APCM name field.
+  static const senderFileSep = '\x1f';
 
   static Uint8List encode({
     required ChatMessageType type,
     required Uint8List data,
     String? fileName,
     String? mimeType,
+    String? senderName,
   }) {
-    final nameBytes = utf8.encode(fileName ?? '');
+    final nameBytes = utf8.encode(
+      packNameField(type: type, senderName: senderName, fileName: fileName),
+    );
     final mimeBytes = utf8.encode(mimeType ?? '');
     final buffer = BytesBuilder();
     buffer.add(_magic);
@@ -27,27 +39,86 @@ class ChatPayloadCodec {
   }
 
   /// Bytes [encode] adds around the data, without building the envelope.
-  static int overheadBytes({String? fileName, String? mimeType}) =>
+  static int overheadBytes({
+    String? fileName,
+    String? mimeType,
+    String? senderName,
+    ChatMessageType type = ChatMessageType.file,
+  }) =>
       _magic.length +
       3 +
-      utf8.encode(fileName ?? '').length +
+      utf8
+          .encode(
+            packNameField(
+              type: type,
+              senderName: senderName,
+              fileName: fileName,
+            ),
+          )
+          .length +
       utf8.encode(mimeType ?? '').length;
 
-  /// Text and links leave name and MIME empty: the type byte already says
-  /// what they are, and on sound the 21 bytes of `message.txt`/`text/plain`
-  /// cost more airtime than a short message itself. Decoders have always read
-  /// empty fields as absent, so older builds accept this unchanged.
-  static Uint8List encodeText(String text) {
+  /// Packs sender + optional file name into the APCM name field.
+  static String packNameField({
+    required ChatMessageType type,
+    String? senderName,
+    String? fileName,
+  }) {
+    final sender = UserProfileStore.sanitize(senderName);
+    final file = fileName ?? '';
+    if (sender == null) return file;
+
+    if (type == ChatMessageType.text || type == ChatMessageType.link) {
+      return sender;
+    }
+    if (file.isEmpty) return sender;
+    return '$sender$senderFileSep$file';
+  }
+
+  /// Splits the APCM name field into sender and file name.
+  static ({String? senderName, String? fileName}) unpackNameField(
+    String raw,
+    ChatMessageType type,
+  ) {
+    if (raw.isEmpty) return (senderName: null, fileName: null);
+
+    final sep = raw.indexOf(senderFileSep);
+    if (sep >= 0) {
+      final sender = UserProfileStore.sanitize(raw.substring(0, sep));
+      final file = raw.substring(sep + 1);
+      return (
+        senderName: sender,
+        fileName: file.isEmpty ? null : file,
+      );
+    }
+
+    if (type == ChatMessageType.text || type == ChatMessageType.link) {
+      // Legacy builds used message.txt / link.url here; ignore those.
+      if (raw == 'message.txt' || raw == 'link.url') {
+        return (senderName: null, fileName: null);
+      }
+      return (senderName: UserProfileStore.sanitize(raw), fileName: null);
+    }
+
+    return (senderName: null, fileName: raw);
+  }
+
+  /// Text and links leave MIME empty: the type byte already says what they
+  /// are. An optional short [senderName] uses the name field (~name length + 1
+  /// byte on air).
+  static Uint8List encodeText(String text, {String? senderName}) {
     return encode(
       type: ChatMessageType.text,
       data: Uint8List.fromList(utf8.encode(text)),
+      senderName: senderName,
     );
   }
 
-  static Uint8List encodeLink(String url) {
+  static Uint8List encodeLink(String url, {String? senderName}) {
     return encode(
       type: ChatMessageType.link,
       data: Uint8List.fromList(utf8.encode(url)),
+      senderName: senderName,
     );
   }
 
@@ -71,8 +142,9 @@ class ChatPayloadCodec {
       if (offset >= raw.length) return null;
       final nameLen = raw[offset++];
       if (offset + nameLen > raw.length) return null;
-      final fileName = utf8.decode(raw.sublist(offset, offset + nameLen));
+      final rawName = utf8.decode(raw.sublist(offset, offset + nameLen));
       offset += nameLen;
+      final names = unpackNameField(rawName, type);
 
       if (offset >= raw.length) return null;
       final mimeLen = raw[offset++];
@@ -93,9 +165,10 @@ class ChatPayloadCodec {
         timestamp: DateTime.now(),
         text: text,
         data: type == ChatMessageType.text || type == ChatMessageType.link ? null : data,
-        fileName: fileName.isEmpty ? null : fileName,
+        fileName: names.fileName,
         mimeType: mimeType.isEmpty ? null : mimeType,
         byteSize: data.length,
+        senderName: names.senderName,
       );
     }
 

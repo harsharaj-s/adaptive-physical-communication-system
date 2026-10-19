@@ -36,7 +36,9 @@ class ReceivedContentView extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    _typeLabel(message.type),
+                    message.senderName?.isNotEmpty == true
+                        ? '${_typeLabel(message.type)} · ${message.senderName}'
+                        : _typeLabel(message.type),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),

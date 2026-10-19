@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:adaptive_physical_communication/application/app_controller.dart';
 import 'package:adaptive_physical_communication/main.dart';
 import 'package:adaptive_physical_communication/ui/screens/home_screen.dart';
 
@@ -9,12 +10,36 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const AdaptiveCommApp());
+    await tester.pumpWidget(
+      AdaptiveCommApp(create: AppController.forTest),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(HomeScreen.appName), findsOneWidget);
     expect(find.text('Send'), findsOneWidget);
     expect(find.text('Receive'), findsOneWidget);
     expect(find.text('Simulation Lab'), findsNothing);
+  });
+
+  testWidgets('first launch asks for display name', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      AdaptiveCommApp(
+        create: () => AppController(persist: false),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('What should we call you?'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Harsh');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(HomeScreen.appName), findsOneWidget);
+    expect(find.text('HARSH'), findsOneWidget);
   });
 }

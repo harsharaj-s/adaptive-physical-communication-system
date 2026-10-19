@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
 import 'package:adaptive_physical_communication/core/channels/hardware_channels.dart';
+import 'package:adaptive_physical_communication/core/chat/chat_history_store.dart';
 import 'package:adaptive_physical_communication/core/chat/chat_message.dart';
 import 'package:adaptive_physical_communication/core/chat/chat_payload_codec.dart';
 import 'package:adaptive_physical_communication/core/logging/structured_logger.dart';
@@ -23,6 +24,7 @@ import 'package:adaptive_physical_communication/core/simulation/scenarios.dart' 
 import 'package:adaptive_physical_communication/core/simulation/simulation_orchestrator.dart';
 import 'package:adaptive_physical_communication/core/types/types.dart';
 import 'package:adaptive_physical_communication/core/platform/vibration_transmitter_state.dart';
+import 'package:adaptive_physical_communication/core/user/user_profile_store.dart';
 import 'package:adaptive_physical_communication/ui/models/compose_payload.dart';
 
 export 'package:adaptive_physical_communication/core/channels/hardware_channels.dart';
@@ -30,9 +32,29 @@ export 'package:adaptive_physical_communication/core/channels/hardware_channels.
 /// Unified application controller — simulation, hardware, and performance modes.
 class AppController extends ChangeNotifier {
   final StructuredLogger logger = StructuredLogger();
-  AppController() {
+
+  AppController({
+    String? displayName,
+    List<ChatMessage>? initialMessages,
+    bool persist = true,
+  })  : _displayName = UserProfileStore.sanitize(displayName),
+        _persist = persist,
+        _ready = displayName != null || !persist {
+    if (initialMessages != null) {
+      _chatMessages.addAll(initialMessages);
+    }
     onOpticalTransmitCancel = requestCancelTransfer;
   }
+
+  /// Test / widget helper that skips disk I/O.
+  factory AppController.forTest({String displayName = 'Test'}) {
+    return AppController(displayName: displayName, persist: false);
+  }
+
+  final bool _persist;
+  bool _ready;
+  String? _displayName;
+  Timer? _historySaveTimer;
 
   OperationMode _mode = OperationMode.simulation;
   EndpointRole _role = EndpointRole.sender;
@@ -79,6 +101,46 @@ class AppController extends ChangeNotifier {
       _chatMessages.where((m) => !m.isOutgoing).length;
   List<sim.ScenarioDefinition> get availableScenarios => sim.scenarios;
   bool get hardwareAvailable => isPhysicalChannelSupported;
+  bool get ready => _ready;
+  String? get displayName => _displayName;
+  bool get hasDisplayName =>
+      _displayName != null && _displayName!.trim().isNotEmpty;
+
+  /// Load display name + chat history from disk (no-op when [persist] is false).
+  Future<void> bootstrap() async {
+    if (_ready) return;
+    if (_persist) {
+      _displayName ??= await UserProfileStore.load();
+      if (_chatMessages.isEmpty) {
+        final saved = await ChatHistoryStore.load();
+        if (saved.isNotEmpty) {
+          _chatMessages.addAll(saved);
+        }
+      }
+    }
+    _ready = true;
+    notifyListeners();
+  }
+
+  Future<bool> setDisplayName(String name) async {
+    final cleaned = UserProfileStore.sanitize(name);
+    if (cleaned == null) return false;
+    if (_persist) {
+      final ok = await UserProfileStore.save(cleaned);
+      if (!ok) return false;
+    }
+    _displayName = cleaned;
+    notifyListeners();
+    return true;
+  }
+
+  void _scheduleHistorySave() {
+    if (!_persist) return;
+    _historySaveTimer?.cancel();
+    _historySaveTimer = Timer(const Duration(milliseconds: 400), () {
+      unawaited(ChatHistoryStore.save(List<ChatMessage>.from(_chatMessages)));
+    });
+  }
 
   HardwareOpticalChannel? _opticalChannel;
   HardwareAcousticChannel? _acousticChannel;
@@ -135,25 +197,30 @@ class AppController extends ChangeNotifier {
     resetCancelFlag();
     await configurePhysicalFlow(role: EndpointRole.sender, channel: channel);
 
+    final outgoing = payload.senderName != null
+        ? payload
+        : payload.withSenderName(_displayName);
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     _chatMessages.add(ChatMessage(
       id: id,
       isOutgoing: true,
-      type: payload.type,
+      type: outgoing.type,
       status: ChatMessageStatus.sending,
       timestamp: DateTime.now(),
-      text: payload.text,
-      data: payload.type == ChatMessageType.text || payload.type == ChatMessageType.link
+      text: outgoing.text,
+      data: outgoing.type == ChatMessageType.text || outgoing.type == ChatMessageType.link
           ? null
-          : payload.data,
-      fileName: payload.fileName,
-      mimeType: payload.mimeType,
-      byteSize: payload.byteSize,
+          : outgoing.data,
+      fileName: outgoing.fileName,
+      mimeType: outgoing.mimeType,
+      byteSize: outgoing.byteSize,
+      senderName: outgoing.senderName,
     ));
     notifyListeners();
+    _scheduleHistorySave();
 
     try {
-      final envelope = await _prepareEnvelope(payload);
+      final envelope = await _prepareEnvelope(outgoing);
       if (channel == CommChannelId.optical &&
           envelope.length > FountainQrModem.maxEnvelopeBytes) {
         _statusMessage =
@@ -203,6 +270,7 @@ class AppController extends ChangeNotifier {
         data: compressed,
         fileName: payload.fileName ?? 'photo.jpg',
         mimeType: 'image/jpeg',
+        senderName: payload.senderName ?? _displayName,
       );
     }
     return payload.toEnvelope();
@@ -431,6 +499,9 @@ class AppController extends ChangeNotifier {
   void clearChat() {
     _chatMessages.clear();
     notifyListeners();
+    if (_persist) {
+      unawaited(ChatHistoryStore.clear());
+    }
   }
 
   void _markChatMessage(String id, ChatMessageStatus status) {
@@ -438,6 +509,7 @@ class AppController extends ChangeNotifier {
     if (i >= 0) {
       _chatMessages[i] = _chatMessages[i].copyWith(status: status);
       notifyListeners();
+      _scheduleHistorySave();
     }
   }
 
@@ -455,16 +527,23 @@ class AppController extends ChangeNotifier {
     if (msg != null) {
       _chatMessages.add(msg);
       _lastIncomingAt = DateTime.now();
+      final who = msg.senderName;
       _statusMessage = switch (msg.type) {
-        ChatMessageType.image =>
-          'Photo received (${msg.byteSize ?? 0} bytes) — displaying',
-        ChatMessageType.video =>
-          'Video received (${msg.byteSize ?? 0} bytes) — playing',
-        ChatMessageType.file =>
-          'File received (${msg.fileName ?? 'file'}, ${msg.byteSize ?? 0} bytes)',
-        _ => 'Message received via physical channel',
+        ChatMessageType.image => who == null
+            ? 'Photo received (${msg.byteSize ?? 0} bytes) — displaying'
+            : 'Photo from $who (${msg.byteSize ?? 0} bytes) — displaying',
+        ChatMessageType.video => who == null
+            ? 'Video received (${msg.byteSize ?? 0} bytes) — playing'
+            : 'Video from $who (${msg.byteSize ?? 0} bytes) — playing',
+        ChatMessageType.file => who == null
+            ? 'File received (${msg.fileName ?? 'file'}, ${msg.byteSize ?? 0} bytes)'
+            : 'File from $who (${msg.fileName ?? 'file'}, ${msg.byteSize ?? 0} bytes)',
+        _ => who == null
+            ? 'Message received via physical channel'
+            : 'Message from $who',
       };
       notifyListeners();
+      _scheduleHistorySave();
       if (GallerySaver.canSave(msg) && GallerySaver.instance.isSupported) {
         unawaited(_autoSaveToGallery(msg));
       }
@@ -499,16 +578,19 @@ class AppController extends ChangeNotifier {
       fileName: fileName,
       mimeType: mimeType,
       byteSize: payload.length,
+      senderName: _displayName,
     ));
     notifyListeners();
+    _scheduleHistorySave();
 
     final envelope = type == ChatMessageType.text && text != null
-        ? ChatPayloadCodec.encodeText(text)
+        ? ChatPayloadCodec.encodeText(text, senderName: _displayName)
         : ChatPayloadCodec.encode(
             type: type,
             data: payload,
             fileName: fileName,
             mimeType: mimeType,
+            senderName: _displayName,
           );
 
     try {
@@ -517,7 +599,10 @@ class AppController extends ChangeNotifier {
         if (_lastSimResult?.dataMatch == true) {
           _markChatMessage(id, ChatMessageStatus.delivered);
           final rx = ChatPayloadCodec.decodeIncoming(envelope, isOutgoing: false);
-          if (rx != null) _chatMessages.add(rx.copyWith(id: '${id}_rx'));
+          if (rx != null) {
+            _chatMessages.add(rx.copyWith(id: '${id}_rx'));
+            _scheduleHistorySave();
+          }
         } else {
           _markChatMessage(id, ChatMessageStatus.failed);
         }
@@ -1202,6 +1287,11 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _historySaveTimer?.cancel();
+    if (_persist && _chatMessages.isNotEmpty) {
+      // Best-effort flush; ignore failures during teardown.
+      unawaited(ChatHistoryStore.save(List<ChatMessage>.from(_chatMessages)));
+    }
     _stopHardwareReceiverListener();
     _incomingIdleTimer?.cancel();
     _opticalChannel?.dispose();

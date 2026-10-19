@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
 
 import 'package:adaptive_physical_communication/application/app_controller.dart';
+import 'package:adaptive_physical_communication/ui/screens/display_name_screen.dart';
 import 'package:adaptive_physical_communication/ui/screens/home_screen.dart';
 import 'package:adaptive_physical_communication/ui/widgets/app_logo.dart';
 import 'package:adaptive_physical_communication/ui/widgets/optical_active_overlay.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const AdaptiveCommApp());
 }
 
 class AdaptiveCommApp extends StatelessWidget {
-  const AdaptiveCommApp({super.key});
+  const AdaptiveCommApp({super.key, this.create});
+
+  /// Optional factory for tests (e.g. [AppController.forTest]).
+  final AppController Function()? create;
 
   @override
   Widget build(BuildContext context) {
     return AppProvider(
-      create: () => AppController(),
+      create: create ?? AppController.new,
       child: MaterialApp(
         title: AppBrand.name,
         debugShowCheckedModeBanner: false,
@@ -106,7 +111,7 @@ class AdaptiveCommApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const HomeScreen(),
+        home: const _AppGate(),
         builder: (context, child) {
           return Stack(
             fit: StackFit.expand,
@@ -118,6 +123,38 @@ class AdaptiveCommApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// Loads profile/history, then shows the name screen or home.
+class _AppGate extends StatefulWidget {
+  const _AppGate();
+
+  @override
+  State<_AppGate> createState() => _AppGateState();
+}
+
+class _AppGateState extends State<_AppGate> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppProvider.of(context).bootstrap();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppProvider.of(context);
+    if (!app.ready) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!app.hasDisplayName) {
+      return const DisplayNameScreen();
+    }
+    return const HomeScreen();
   }
 }
 
