@@ -1,3 +1,9 @@
+<p align="center">
+  <strong>Harsharaj S</strong><br>
+  <a href="https://github.com/harsharaj-s"><img src="docs/images/badge-github.svg" alt="GitHub: harsharaj-s" height="28"></a>
+  <a href="https://www.linkedin.com/in/harsharajs"><img src="docs/images/badge-linkedin.svg" alt="LinkedIn: harsharajs" height="28"></a>
+</p>
+
 <p align="center"><img src="assets/branding/app_icon.png" alt="Adaptive Physical Communication logo" width="128"></p>
 
 # Adaptive Physical Communication System (APCS)
